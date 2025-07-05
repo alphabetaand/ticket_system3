@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ticket-system
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn ticket_system_unified:app
+    envVars:
+      - key: FLASK_ENV
+        value: production

@@ -1,0 +1,157 @@
+2025-07-04 11:44:41,797 - INFO - Base de données initialisée
+2025-07-04 11:44:46,020 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 11:44:46,020 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 11:45:43,477 - INFO - 192.168.1.151 - - [04/Jul/2025 11:45:43] "GET / HTTP/1.1" 200 -
+2025-07-04 11:45:59,449 - INFO - 192.168.1.151 - - [04/Jul/2025 11:45:59] "GET /verify?ticket=1 HTTP/1.1" 200 -
+2025-07-04 11:46:07,409 - INFO - 192.168.1.151 - - [04/Jul/2025 11:46:07] "GET /verify?ticket=2 HTTP/1.1" 200 -
+2025-07-04 11:46:22,342 - INFO - Ticket 1 validé
+2025-07-04 11:46:22,499 - INFO - 192.168.1.151 - - [04/Jul/2025 11:46:22] "POST /validate HTTP/1.1" 200 -
+2025-07-04 11:47:18,964 - INFO - Ticket 3 validé
+2025-07-04 11:47:18,979 - INFO - 192.168.1.151 - - [04/Jul/2025 11:47:18] "POST /validate HTTP/1.1" 200 -
+2025-07-04 11:47:31,356 - INFO - 192.168.1.151 - - [04/Jul/2025 11:47:31] "GET /verify?ticket=2 HTTP/1.1" 200 -
+2025-07-04 11:47:39,502 - INFO - 192.168.1.151 - - [04/Jul/2025 11:47:39] "GET /verify?ticket=3 HTTP/1.1" 200 -
+2025-07-04 11:47:52,520 - INFO - 192.168.1.151 - - [04/Jul/2025 11:47:52] "[31m[1mPOST /delete_validated HTTP/1.1[0m" 401 -
+2025-07-04 11:48:04,739 - INFO - 2 tickets supprimés
+2025-07-04 11:48:04,739 - INFO - 192.168.1.151 - - [04/Jul/2025 11:48:04] "POST /delete_validated HTTP/1.1" 200 -
+2025-07-04 11:54:24,967 - INFO - Base de données initialisée
+2025-07-04 11:54:25,207 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 11:54:25,207 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 11:56:25,899 - INFO - 192.168.1.151 - - [04/Jul/2025 11:56:25] "GET / HTTP/1.1" 200 -
+2025-07-04 11:56:26,803 - INFO - 192.168.1.151 - - [04/Jul/2025 11:56:26] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:01:31,453 - INFO - Ticket 1 validé
+2025-07-04 12:01:31,453 - INFO - 192.168.1.151 - - [04/Jul/2025 12:01:31] "POST /validate HTTP/1.1" 200 -
+2025-07-04 12:01:31,490 - INFO - 192.168.1.151 - - [04/Jul/2025 12:01:31] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:01:37,443 - INFO - Ticket 6 validé
+2025-07-04 12:01:37,443 - INFO - 192.168.1.151 - - [04/Jul/2025 12:01:37] "POST /validate HTTP/1.1" 200 -
+2025-07-04 12:01:37,478 - INFO - 192.168.1.151 - - [04/Jul/2025 12:01:37] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:01:44,875 - INFO - 192.168.1.151 - - [04/Jul/2025 12:01:44] "GET /verify?ticket=8 HTTP/1.1" 200 -
+2025-07-04 12:06:10,808 - INFO - 192.168.1.151 - - [04/Jul/2025 12:06:10] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:06:57,621 - INFO - 192.168.1.151 - - [04/Jul/2025 12:06:57] "GET /verify?ticket=58 HTTP/1.1" 200 -
+2025-07-04 12:07:02,706 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:02] "GET /verify?ticket=99 HTTP/1.1" 200 -
+2025-07-04 12:07:06,787 - INFO - Ticket 99 validé
+2025-07-04 12:07:06,787 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:06] "POST /validate HTTP/1.1" 200 -
+2025-07-04 12:07:06,805 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:06] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:12,622 - INFO - Ticket 33 validé
+2025-07-04 12:07:12,622 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:12] "POST /validate HTTP/1.1" 200 -
+2025-07-04 12:07:12,659 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:12] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:28,790 - INFO - 4 tickets supprimés
+2025-07-04 12:07:28,792 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:28] "POST /delete_validated HTTP/1.1" 200 -
+2025-07-04 12:07:28,871 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:28] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:41,292 - INFO - 0 tickets supprimés
+2025-07-04 12:07:41,292 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:41] "POST /delete_validated HTTP/1.1" 200 -
+2025-07-04 12:07:41,340 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:41] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:44,541 - INFO - 0 tickets supprimés
+2025-07-04 12:07:44,541 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:44] "POST /delete_validated HTTP/1.1" 200 -
+2025-07-04 12:07:44,583 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:44] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:46,555 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:46] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:49,139 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:49] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:49,921 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:49] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:07:54,790 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:54] "GET / HTTP/1.1" 200 -
+2025-07-04 12:07:54,901 - INFO - 192.168.1.151 - - [04/Jul/2025 12:07:54] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:01,653 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:01] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:02,989 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:02] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:03,784 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:03] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:28,551 - INFO - 0 tickets supprimés
+2025-07-04 12:08:28,555 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:28] "POST /delete_validated HTTP/1.1" 200 -
+2025-07-04 12:08:28,578 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:28] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:33,064 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:33] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:34,270 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:34] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:34,480 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:34] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:08:36,707 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:36] "GET / HTTP/1.1" 200 -
+2025-07-04 12:08:36,793 - INFO - 192.168.1.151 - - [04/Jul/2025 12:08:36] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:10:45,888 - INFO - Base de données initialisée
+2025-07-04 12:10:46,023 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 12:10:46,023 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 12:11:39,621 - INFO - 192.168.1.151 - - [04/Jul/2025 12:11:39] "GET / HTTP/1.1" 200 -
+2025-07-04 12:11:39,888 - INFO - 192.168.1.151 - - [04/Jul/2025 12:11:39] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:11:44,571 - INFO - 192.168.1.151 - - [04/Jul/2025 12:11:44] "GET / HTTP/1.1" 200 -
+2025-07-04 12:11:44,648 - INFO - 192.168.1.151 - - [04/Jul/2025 12:11:44] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:12:00,176 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:00] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:12:01,310 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:01] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:12:17,880 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:17] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:12:33,084 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:33] "GET /verify?ticket=1 HTTP/1.1" 200 -
+2025-07-04 12:12:39,151 - INFO - Ticket 1 validé
+2025-07-04 12:12:39,151 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:39] "POST /validate HTTP/1.1" 200 -
+2025-07-04 12:12:39,186 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:39] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:12:41,968 - INFO - 192.168.1.151 - - [04/Jul/2025 12:12:41] "GET /export_word HTTP/1.1" 200 -
+2025-07-04 12:37:22,654 - INFO - Database initialized successfully
+2025-07-04 12:37:22,799 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 12:37:22,801 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 12:37:30,867 - INFO - 192.168.1.151 - - [04/Jul/2025 12:37:30] "GET / HTTP/1.1" 200 -
+2025-07-04 12:37:31,174 - INFO - 192.168.1.151 - - [04/Jul/2025 12:37:31] "GET /history HTTP/1.1" 200 -
+2025-07-04 12:37:45,363 - INFO - 192.168.1.151 - - [04/Jul/2025 12:37:45] "GET /verify?ticket=1 HTTP/1.1" 200 -
+2025-07-04 12:37:51,931 - INFO - 192.168.1.151 - - [04/Jul/2025 12:37:51] "GET /verify?ticket=2 HTTP/1.1" 200 -
+2025-07-04 12:48:39,183 - INFO - Database initialized successfully
+2025-07-04 12:48:39,298 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 12:48:39,298 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 12:49:31,326 - INFO - 192.168.1.151 - - [04/Jul/2025 12:49:31] "GET / HTTP/1.1" 200 -
+2025-07-04 12:49:51,527 - INFO - 192.168.1.151 - - [04/Jul/2025 12:49:51] "GET / HTTP/1.1" 200 -
+2025-07-04 12:56:41,958 - INFO - Database initialized successfully
+2025-07-04 12:56:42,100 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 12:56:42,100 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 12:56:52,269 - INFO - 192.168.1.151 - - [04/Jul/2025 12:56:52] "GET / HTTP/1.1" 200 -
+2025-07-04 13:03:26,725 - INFO - Database initialized successfully
+2025-07-04 13:03:26,809 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 13:03:26,821 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 13:03:33,833 - INFO - 192.168.1.151 - - [04/Jul/2025 13:03:33] "GET / HTTP/1.1" 200 -
+2025-07-04 13:08:57,823 - INFO - Database initialized successfully
+2025-07-04 13:08:58,705 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 13:08:58,705 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 13:08:58,722 - INFO -  * Restarting with stat
+2025-07-04 13:09:00,400 - INFO - Database initialized successfully
+2025-07-04 13:09:00,699 - WARNING -  * Debugger is active!
+2025-07-04 13:09:00,844 - INFO -  * Debugger PIN: 123-132-399
+2025-07-04 13:09:10,646 - INFO - 192.168.1.151 - - [04/Jul/2025 13:09:10] "GET / HTTP/1.1" 200 -
+2025-07-04 13:23:10,348 - INFO -  * Detected change in 'c:\\Users\\lenovo3\\Desktop\\cours info\\ticket v3\\ticket_system_unified.py', reloading
+2025-07-04 13:23:54,904 - INFO - Database initialized successfully
+2025-07-04 13:23:55,111 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 13:23:55,111 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 13:23:55,111 - INFO -  * Restarting with stat
+2025-07-04 13:23:56,837 - INFO - Database initialized successfully
+2025-07-04 13:23:56,949 - WARNING -  * Debugger is active!
+2025-07-04 13:23:57,005 - INFO -  * Debugger PIN: 123-132-399
+2025-07-04 13:24:04,882 - INFO - 192.168.1.151 - - [04/Jul/2025 13:24:04] "GET / HTTP/1.1" 200 -
+2025-07-04 13:36:58,645 - INFO -  * Detected change in 'c:\\Users\\lenovo3\\Desktop\\cours info\\ticket v3\\ticket_system_unified.py', reloading
+2025-07-04 13:37:00,763 - INFO -  * Restarting with stat
+2025-07-04 13:37:06,606 - INFO - Database initialized successfully
+2025-07-04 13:37:07,079 - WARNING -  * Debugger is active!
+2025-07-04 13:37:07,131 - INFO -  * Debugger PIN: 123-132-399
+2025-07-04 13:37:27,813 - INFO - Database initialized successfully
+2025-07-04 13:37:27,956 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.151:5000
+2025-07-04 13:37:27,961 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 13:37:27,964 - INFO -  * Restarting with stat
+2025-07-04 13:37:29,548 - INFO - Database initialized successfully
+2025-07-04 13:37:29,643 - WARNING -  * Debugger is active!
+2025-07-04 13:37:29,665 - INFO -  * Debugger PIN: 123-132-399
+2025-07-04 13:37:40,134 - INFO - 192.168.1.151 - - [04/Jul/2025 13:37:40] "GET / HTTP/1.1" 200 -
+2025-07-04 13:37:43,057 - INFO - 192.168.1.151 - - [04/Jul/2025 13:37:43] "GET / HTTP/1.1" 200 -

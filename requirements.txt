@@ -1,0 +1,8 @@
+flask
+flask-cors
+passlib
+pillow
+python-docx
+numpy
+matplotlib
+gunicorn
