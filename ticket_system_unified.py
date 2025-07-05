@@ -1,4 +1,4 @@
-# version Flask uniquement du fichier complet avec suppression par numéro ou tous
+# version Flask avec mot de passe modifié, nom mis à jour et icône intégrée
 import sqlite3
 import os
 import logging
@@ -12,7 +12,7 @@ from datetime import datetime
 # Configuration
 QR_FOLDER = "qrcodes/"
 DB_PATH = "tickets.db"
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = "alphonse2000"  # nouveau mot de passe admin
 FLASK_PORT = 5000
 MAX_HISTORY_ENTRIES = 50
 
@@ -40,13 +40,20 @@ def init_db():
 init_db()
 
 # Interface mobile HTML
+with open("static/icon.png", "rb") as f: pass  # vérifie que l'icône existe
+
 MOBILE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang=\"fr\">
 <head>
   <meta charset=\"UTF-8\">
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-  <title>Système Tickets</title>
+  <title>Saint Anne Show</title>
+  <link rel=\"icon\" type=\"image/png\" href=\"/static/icon.png\">
+  <link rel=\"apple-touch-icon\" href=\"/static/icon.png\">
+  <meta name=\"theme-color\" content=\"#1e3a8a\">
+  <meta name=\"apple-mobile-web-app-capable\" content=\"yes\">
+  <meta name=\"apple-mobile-web-app-title\" content=\"Saint Anne Show\">
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(to right, #fceabb, #f8b500); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
     .container { background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25); text-align: center; width: 90%; max-width: 400px; }
@@ -66,7 +73,7 @@ MOBILE_TEMPLATE = """
 </head>
 <body>
   <div class=\"container\">
-    <h2>🎟️ AGUIART & CO</h2>
+    <h2>🎟️ SAINT ANNE SHOW</h2>
     <input type=\"number\" id=\"ticketInput\" placeholder=\"Numéro de ticket\"><br>
     <button class=\"validate\" onclick=\"validateTicket()\">Valider</button>
     <button class=\"verify\" onclick=\"verifyTicket()\">Vérifier</button>
@@ -88,6 +95,7 @@ MOBILE_TEMPLATE = """
 
     async function validateTicket() {
       const t = document.getElementById('ticketInput').value;
+      if (!t) return alert("Veuillez entrer un numéro de ticket.");
       const r = await fetch(`${apiBase}/validate`, {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ticket: t}) });
       const d = await r.json();
@@ -96,6 +104,7 @@ MOBILE_TEMPLATE = """
 
     async function verifyTicket() {
       const t = document.getElementById('ticketInput').value;
+      if (!t) return alert("Veuillez entrer un numéro de ticket.");
       const r = await fetch(`${apiBase}/verify?ticket=${t}`);
       const d = await r.json();
       document.getElementById('result').innerText = d.status || d.error;
@@ -108,14 +117,6 @@ MOBILE_TEMPLATE = """
       a.href = URL.createObjectURL(blob);
       a.download = 'tickets.docx';
       a.click();
-    }
-
-    async function accessAdmin() {
-      const pwd = document.getElementById('adminPass').value;
-      const r = await fetch(`${apiBase}/admin`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pwd}) });
-      const d = await r.json();
-      document.getElementById('result').innerText = d.success ? "Accès Admin autorisé" : "Accès refusé";
     }
 
     async function loadHistory() {
@@ -280,5 +281,5 @@ def history():
 def ping():
     return "pong", 200
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=FLASK_PORT)
+#if __name__ == '__main__':
+#   app.run(host='0.0.0.0', port=FLASK_PORT)
