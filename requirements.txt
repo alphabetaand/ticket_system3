@@ -6,3 +6,5 @@ python-docx
 numpy
 matplotlib
 gunicorn
+sqlalchemy
+psycopg2-binary

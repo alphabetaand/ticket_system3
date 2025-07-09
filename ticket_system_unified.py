@@ -1,18 +1,32 @@
-# version Flask avec mot de passe modifié, nom mis à jour et icône intégrée
-import sqlite3
-import os
+import os 
 import logging
+import psycopg2
 from flask import Flask, request, jsonify, render_template_string, send_file
 from flask_cors import CORS
 from passlib.context import CryptContext
 from docx import Document
 from io import BytesIO
 from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Configuration
 QR_FOLDER = "qrcodes/"
-DB_PATH = "tickets.db"
-ADMIN_PASSWORD = "alphonse2000"  # nouveau mot de passe admin
+DATABASE_URL = "postgresql://ticketdb_lv5y_user:4qwAvxt0DyjosFepOzfBhyV6HltsTe4r@dpg-d1l8n07diees73fc6pog-a.oregon-postgres.render.com/ticketdb_lv5y"
+print("✅ Connexion à :", DATABASE_URL)
+
+# Test connexion simple
+try:
+    conn = psycopg2.connect(DATABASE_URL)
+    print("✅ Connexion PostgreSQL réussie !")
+    conn.close()
+except Exception as e:
+    print("❌ Échec de la connexion :", e)
+
+engine = create_engine(DATABASE_URL, echo=False)
+Base = declarative_base()
+SessionLocal = sessionmaker(bind=engine)
+ADMIN_PASSWORD = "alphonse2000"
 FLASK_PORT = 5000
 MAX_HISTORY_ENTRIES = 50
 
@@ -26,71 +40,165 @@ ADMIN_PASSWORD_HASH = pwd_context.hash(ADMIN_PASSWORD)
 
 # Créer base de données
 os.makedirs(QR_FOLDER, exist_ok=True)
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+    ticket_number = Column(Integer, primary_key=True, index=True)
+    status = Column(String, default='invalide')
+    qr_hash = Column(String, unique=True, nullable=True)
+    timestamp = Column(DateTime, default=func.now())
+
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS tickets (
-                            ticket_number INTEGER PRIMARY KEY,
-                            status TEXT DEFAULT 'invalide',
-                            qr_hash TEXT UNIQUE,
-                            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        conn.commit()
-        logger.info("Base de données initialisée")
+    Base.metadata.create_all(bind=engine)
 
 init_db()
 
 # Interface mobile HTML
 with open("static/icon.png", "rb") as f: pass  # vérifie que l'icône existe
-
 MOBILE_TEMPLATE = """
 <!DOCTYPE html>
-<html lang=\"fr\">
+<html lang="fr">
 <head>
-  <meta charset=\"UTF-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Saint Anne Show</title>
-  <link rel=\"icon\" type=\"image/png\" href=\"/static/icon.png\">
-  <link rel=\"apple-touch-icon\" href=\"/static/icon.png\">
-  <meta name=\"theme-color\" content=\"#1e3a8a\">
-  <meta name=\"apple-mobile-web-app-capable\" content=\"yes\">
-  <meta name=\"apple-mobile-web-app-title\" content=\"Saint Anne Show\">
+  <link rel="icon" href="/static/icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/icon.png">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(to right, #fceabb, #f8b500); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .container { background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25); text-align: center; width: 90%; max-width: 400px; }
-    h2 { color: #f57c00; margin-bottom: 20px; }
-    input[type=number], input[type=password], select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-    button { width: 100%; padding: 12px; margin-bottom: 10px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; }
-    button.validate { background-color: #4caf50; color: white; }
-    button.verify { background-color: #2196f3; color: white; }
-    button.export { background-color: #ff9800; color: white; }
-    button.admin { background-color: #e91e63; color: white; }
-    button.history { background-color: #9c27b0; color: white; }
-    button.delete { background-color: #f44336; color: white; }
-    button:hover { opacity: 0.9; }
-    #result { margin-top: 15px; font-weight: bold; color: #333; }
-    #historyList { margin-top: 15px; text-align: left; font-size: 14px; max-height: 150px; overflow-y: auto; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(to bottom right, #0f172a, #1e293b);
+      color: white;
+      overflow-x: hidden;
+    }
+    .page {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 30px 20px 100px;
+    }
+    .page.active { display: flex; }
+
+    .logo img {
+      width: 220px;
+      margin-bottom: 30px;
+    }
+
+    input, select {
+      padding: 16px;
+      margin: 12px 0;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    button {
+      padding: 16px;
+      margin-bottom: 16px;
+      font-size: 17px;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      max-width: 360px;
+      color: white;
+    }
+
+    .validate { background-color: #22c55e; }
+    .verify   { background-color: #3b82f6; }
+    .history  { background-color: #f97316; }
+    .export   { background-color: #facc15; color: black; }
+    .delete   { background-color: #ef4444; }
+
+    .nav-links {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .nav-links button {
+      background: none;
+      border: none;
+      color: #a5b4fc;
+      font-size: 15px;
+      margin: 0 8px;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    #result-validation, #result-verification {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fbbf24;
+    }
   </style>
 </head>
 <body>
-  <div class=\"container\">
-    <h2>🎟️ SAINT ANNE SHOW</h2>
-    <input type=\"number\" id=\"ticketInput\" placeholder=\"Numéro de ticket\"><br>
-    <button class=\"validate\" onclick=\"validateTicket()\">Valider</button>
-    <button class=\"verify\" onclick=\"verifyTicket()\">Vérifier</button>
-    <button class=\"export\" onclick=\"exportData()\">Exporter</button>
-    <select id=\"statusFilter\" onchange=\"loadHistory()\">
-      <option value=\"\">Tous les statuts</option>
-      <option value=\"validé\">Validé</option>
-      <option value=\"invalide\">Invalide</option>
-    </select>
-    <button class=\"history\" onclick=\"loadHistory()\">Voir Historique</button>
-    <input type=\"password\" id=\"adminPass\" placeholder=\"Mot de passe admin\">
-    <input type=\"number\" id=\"deleteTicket\" placeholder=\"Ticket à supprimer (laisser vide pour tous)\">
-    <button class=\"delete\" onclick=\"deleteValidated()\">Supprimer</button>
-    <div id=\"result\"></div>
-    <div id=\"historyList\"></div>
+
+  <!-- Page Validation -->
+  <div class="page active" id="validation">
+    <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
+    <input type="number" id="ticketInput" placeholder="Numéro de ticket">
+    <button class="validate" onclick="validateTicket()">✅ Valider</button>
+    <div id="result-validation"></div>
+    <div class="nav-links">
+      <button onclick="showPage('verification')">🔍 Vérifier</button>
+      <button onclick="showPage('admin')">🛠️ Admin</button>
+    </div>
   </div>
+
+  <!-- Page Vérification -->
+  <div class="page" id="verification">
+    <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
+    <input type="number" id="ticketInputVerify" placeholder="Numéro de ticket">
+    <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
+    <div id="result-verification"></div>
+    <div class="nav-links">
+      <button onclick="showPage('validation')">✅ Valider</button>
+      <button onclick="showPage('admin')">🛠️ Admin</button>
+    </div>
+  </div>
+
+  <!-- Page Admin -->
+  <div class="page" id="admin">
+    <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
+    <input type="password" id="adminPass" placeholder="Mot de passe admin">
+    <select id="statusFilter" onchange="loadHistory()">
+      <option value="">Tous les statuts</option>
+      <option value="validé">Validé</option>
+      <option value="invalide">Invalide</option>
+    </select>
+    <button class="history" onclick="loadHistory()">📄 Historique</button>
+    <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
+    <input type="number" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)">
+    <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
+    <div class="nav-links">
+      <button onclick="showPage('validation')">✅ Valider</button>
+      <button onclick="showPage('verification')">🔍 Vérifier</button>
+    </div>
+    <div id="result"></div>
+    <div id="historyList"></div>
+  </div>
+
   <script>
+    function showPage(id) {
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
     const apiBase = window.location.origin;
 
     async function validateTicket() {
@@ -99,15 +207,15 @@ MOBILE_TEMPLATE = """
       const r = await fetch(`${apiBase}/validate`, {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ticket: t}) });
       const d = await r.json();
-      document.getElementById('result').innerText = d.message || d.error;
+      document.getElementById('result-validation').innerText = d.message || d.error;
     }
 
     async function verifyTicket() {
-      const t = document.getElementById('ticketInput').value;
+      const t = document.getElementById('ticketInputVerify').value;
       if (!t) return alert("Veuillez entrer un numéro de ticket.");
       const r = await fetch(`${apiBase}/verify?ticket=${t}`);
       const d = await r.json();
-      document.getElementById('result').innerText = d.status || d.error;
+      document.getElementById('result-verification').innerText = d.status || d.error;
     }
 
     async function exportData() {
@@ -154,7 +262,9 @@ MOBILE_TEMPLATE = """
   </script>
 </body>
 </html>
+
 """
+
 # Flask App
 app = Flask(__name__)
 CORS(app)
@@ -173,13 +283,16 @@ def home():
 def validate():
     try:
         data = request.get_json()
-        t = data.get('ticket')
-        if not t or not str(t).isdigit():
-            return jsonify({"error": "Numéro invalide"}), 400
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO tickets (ticket_number, status) VALUES (?, 'validé') ON CONFLICT(ticket_number) DO UPDATE SET status='validé'", (t,))
-            conn.commit()
+        t = int(data.get('ticket'))
+        db = SessionLocal()
+        ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+        if ticket:
+            ticket.status = 'validé'
+        else:
+            ticket = Ticket(ticket_number=t, status='validé')
+            db.add(ticket)
+        db.commit()
+        db.close()
         return jsonify({"message": f"Ticket {t} validé"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -188,11 +301,10 @@ def validate():
 def verify():
     try:
         t = request.args.get('ticket')
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT status FROM tickets WHERE ticket_number=?", (t,))
-            row = cursor.fetchone()
-            return jsonify({"ticket": t, "status": row[0] if row else 'invalide'})
+        db = SessionLocal()
+        ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+        db.close()
+        return jsonify({"ticket": t, "status": ticket.status if ticket else 'invalide'})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -202,17 +314,15 @@ def export_word():
         doc = Document()
         doc.add_heading("Tickets Validés", 0)
 
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            # On sélectionne uniquement les colonnes existantes
-            cursor.execute("SELECT ticket_number, timestamp FROM tickets WHERE status='validé'")
-            results = cursor.fetchall()
+        db = SessionLocal()
+        results = db.query(Ticket).filter_by(status='validé').all()
+        db.close()
 
-            if not results:
-                doc.add_paragraph("Aucun ticket validé.")
-            else:
-                for ticket_number, timestamp in results:
-                    doc.add_paragraph(f"Ticket {ticket_number} - Validé le {timestamp}")
+        if not results:
+            doc.add_paragraph("Aucun ticket validé.")
+        else:
+            for ticket in results:
+                doc.add_paragraph(f"Ticket {ticket.ticket_number} - Validé le {ticket.timestamp}")
 
         output = BytesIO()
         doc.save(output)
@@ -243,14 +353,13 @@ def delete_validated():
         if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
             return jsonify({"error": "Accès refusé"}), 401
         ticket = data.get("ticket")
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            if ticket and str(ticket).isdigit():
-                cursor.execute("DELETE FROM tickets WHERE ticket_number=? AND status='validé'", (ticket,))
-            else:
-                cursor.execute("DELETE FROM tickets WHERE status='validé'")
-            deleted = cursor.rowcount
-            conn.commit()
+        db = SessionLocal()
+        if ticket and str(ticket).isdigit():
+            deleted = db.query(Ticket).filter_by(ticket_number=int(ticket), status='validé').delete()
+        else:
+            deleted = db.query(Ticket).filter_by(status='validé').delete()
+        db.commit()
+        db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -259,21 +368,15 @@ def delete_validated():
 def history():
     try:
         status = request.args.get("status")
-        query = "SELECT ticket_number, status, timestamp FROM tickets"
-        params = []
+        db = SessionLocal()
+        query = db.query(Ticket)
         if status in ("validé", "invalide"):
-            query += " WHERE status=?"
-            params.append(status)
-        query += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(MAX_HISTORY_ENTRIES)
-
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            results = cursor.fetchall()
-            return jsonify([
-                f"Ticket {r[0]} - {r[1]} - {r[2]}" for r in results
-            ])
+            query = query.filter_by(status=status)
+        results = query.order_by(Ticket.timestamp.desc()).limit(MAX_HISTORY_ENTRIES).all()
+        db.close()
+        return jsonify([
+            f"Ticket {r.ticket_number} - {r.status} - {r.timestamp}" for r in results
+        ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -281,5 +384,5 @@ def history():
 def ping():
     return "pong", 200
 
-#if __name__ == '__main__':
+# if __name__ == '__main__':
 #   app.run(host='0.0.0.0', port=FLASK_PORT)
