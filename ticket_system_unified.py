@@ -386,24 +386,24 @@ def delete_validated():
 
         ticket = data.get("ticket")
         db = SessionLocal()
-
         if ticket and str(ticket).isdigit():
-            # Supprimer un ticket spécifique avec status = 'validé' ou 'validé - ...'
-           deleted = db.query(Ticket).filter(
-                or_(
-                     Ticket.status == "validé",
-                     Ticket.status.like("validé%")
-                )
-            ).delete()
+              deleted = db.query(Ticket).filter(
+             and_(
+              Ticket.ticket_number == int(ticket),
+               or_(
+                 Ticket.status == "validé",
+                 Ticket.status.like("validé%")
+               )
+           )
+         ).delete()
         else:
-            # Supprimer tous les tickets validés (anciens et nouveaux formats)
-            deleted = db.query(Ticket).filter(
-                or_(
-                    Ticket.status == "validé",
-                    Ticket.status.like("validé%")
-                )
-            ).delete()
-
+           deleted = db.query(Ticket).filter(
+        or_(
+            Ticket.status == "validé",
+            Ticket.status.like("validé%")
+        )
+       ).delete()
+                                        
         db.commit()
         db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
