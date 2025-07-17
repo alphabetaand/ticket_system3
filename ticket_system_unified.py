@@ -9,6 +9,7 @@ from io import BytesIO
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import and_, or_
 
 # Configuration
 QR_FOLDER = "qrcodes/"
@@ -142,7 +143,7 @@ MOBILE_TEMPLATE = """
       margin-top: 20px;
       font-size: 16px;
       font-weight: bold;
-      color: #fbbf24;
+      color: inherit; /* couleur dynamique via JS */
     }
   </style>
 </head>
@@ -205,9 +206,14 @@ MOBILE_TEMPLATE = """
       const t = document.getElementById('ticketInput').value;
       if (!t) return alert("Veuillez entrer un numéro de ticket.");
       const r = await fetch(`${apiBase}/validate`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ticket: t}) });
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ticket: t})
+      });
       const d = await r.json();
-      document.getElementById('result-validation').innerText = d.message || d.error;
+      const result = document.getElementById('result-validation');
+      result.innerText = d.message || d.error;
+      result.style.color = d.message ? "#22c55e" : "red"; // vert ou rouge
     }
 
     async function verifyTicket() {
@@ -215,8 +221,21 @@ MOBILE_TEMPLATE = """
       if (!t) return alert("Veuillez entrer un numéro de ticket.");
       const r = await fetch(`${apiBase}/verify?ticket=${t}`);
       const d = await r.json();
-      document.getElementById('result-verification').innerText = d.status || d.error;
-    }
+      const result = document.getElementById('result-verification');
+     if (d.status) {
+  result.innerText = d.status;
+  if (d.status.includes("validé")) {
+    result.style.color = "#22c55e";  // vert
+  } else if (d.status.includes("invalide")) {
+    result.style.color = "#ef4444";  // rouge
+  } else {
+    result.style.color = "#facc15";  // jaune
+  }
+} else {
+  result.innerText = d.error || "Erreur inconnue";
+  result.style.color = "red";
+}
+
 
     async function exportData() {
       const r = await fetch(`${apiBase}/export_word`);
@@ -262,9 +281,7 @@ MOBILE_TEMPLATE = """
   </script>
 </body>
 </html>
-
 """
-
 # Flask App
 app = Flask(__name__)
 CORS(app)
@@ -287,10 +304,10 @@ def validate():
         db = SessionLocal()
         ticket = db.query(Ticket).filter_by(ticket_number=t).first()
         if ticket:
-            ticket.status = 'validé'
+           ticket.status = f"validé - {t}"
         else:
-            ticket = Ticket(ticket_number=t, status='validé')
-            db.add(ticket)
+          ticket = Ticket(ticket_number=t, status=f"validé - {t}")
+        db.add(ticket)
         db.commit()
         db.close()
         return jsonify({"message": f"Ticket {t} validé"})
@@ -301,10 +318,18 @@ def validate():
 def verify():
     try:
         t = request.args.get('ticket')
-        db = SessionLocal()
-        ticket = db.query(Ticket).filter_by(ticket_number=t).first()
-        db.close()
-        return jsonify({"ticket": t, "status": ticket.status if ticket else 'invalide'})
+        with SessionLocal() as db:
+            ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+
+            if ticket:
+                result_status = ticket.status
+            else:
+                ticket = Ticket(ticket_number=int(t), status=f"invalide - {t}")
+                db.add(ticket)
+                db.commit()
+                result_status = ticket.status
+
+        return jsonify({"ticket": t, "status": result_status})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -315,7 +340,12 @@ def export_word():
         doc.add_heading("Tickets Validés", 0)
 
         db = SessionLocal()
-        results = db.query(Ticket).filter_by(status='validé').all()
+        results = db.query(Ticket).filter(
+          or_(
+        Ticket.status == 'validé',
+        Ticket.status.like('validé%')
+       )
+    ).all()
         db.close()
 
         if not results:
@@ -352,12 +382,27 @@ def delete_validated():
         data = request.get_json()
         if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
             return jsonify({"error": "Accès refusé"}), 401
+
         ticket = data.get("ticket")
         db = SessionLocal()
+
         if ticket and str(ticket).isdigit():
-            deleted = db.query(Ticket).filter_by(ticket_number=int(ticket), status='validé').delete()
+            # Supprimer un ticket spécifique avec status = 'validé' ou 'validé - ...'
+           deleted = db.query(Ticket).filter(
+                or_(
+                     Ticket.status == "validé",
+                     Ticket.status.like("validé%")
+                )
+            ).delete()
         else:
-            deleted = db.query(Ticket).filter_by(status='validé').delete()
+            # Supprimer tous les tickets validés (anciens et nouveaux formats)
+            deleted = db.query(Ticket).filter(
+                or_(
+                    Ticket.status == "validé",
+                    Ticket.status.like("validé%")
+                )
+            ).delete()
+
         db.commit()
         db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
@@ -370,10 +415,13 @@ def history():
         status = request.args.get("status")
         db = SessionLocal()
         query = db.query(Ticket)
+
         if status in ("validé", "invalide"):
-            query = query.filter_by(status=status)
+            query = query.filter(Ticket.status.like(f"{status}%"))
+
         results = query.order_by(Ticket.timestamp.desc()).limit(MAX_HISTORY_ENTRIES).all()
         db.close()
+
         return jsonify([
             f"Ticket {r.ticket_number} - {r.status} - {r.timestamp}" for r in results
         ])
@@ -383,6 +431,5 @@ def history():
 @app.route('/ping')
 def ping():
     return "pong", 200
-
-# if __name__ == '__main__':
-#   app.run(host='0.0.0.0', port=FLASK_PORT)
+#if __name__ == '__main__':
+#app.run(host='0.0.0.0', port=FLASK_PORT)
