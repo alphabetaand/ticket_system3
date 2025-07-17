@@ -194,91 +194,92 @@ MOBILE_TEMPLATE = """
     <div id="historyList"></div>
   </div>
 
-  <script>
-    function showPage(id) {
-      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-    }
-
-    const apiBase = window.location.origin;
-
-    async function validateTicket() {
-      const t = document.getElementById('ticketInput').value;
-      if (!t) return alert("Veuillez entrer un numéro de ticket.");
-      const r = await fetch(`${apiBase}/validate`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ticket: t})
-      });
-      const d = await r.json();
-      const result = document.getElementById('result-validation');
-      result.innerText = d.message || d.error;
-      result.style.color = d.message ? "#22c55e" : "red"; // vert ou rouge
-    }
-
-    async function verifyTicket() {
-      const t = document.getElementById('ticketInputVerify').value;
-      if (!t) return alert("Veuillez entrer un numéro de ticket.");
-      const r = await fetch(`${apiBase}/verify?ticket=${t}`);
-      const d = await r.json();
-      const result = document.getElementById('result-verification');
-     if (d.status) {
-  result.innerText = d.status;
-  if (d.status.includes("validé")) {
-    result.style.color = "#22c55e";  // vert
-  } else if (d.status.includes("invalide")) {
-    result.style.color = "#ef4444";  // rouge
-  } else {
-    result.style.color = "#facc15";  // jaune
+ <script>
+  function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
   }
-} else {
-  result.innerText = d.error || "Erreur inconnue";
-  result.style.color = "red";
-}
 
+  const apiBase = window.location.origin;
 
-    async function exportData() {
-      const r = await fetch(`${apiBase}/export_word`);
-      const blob = await r.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'tickets.docx';
-      a.click();
-    }
+  async function validateTicket() {
+    const t = document.getElementById('ticketInput').value;
+    if (!t) return alert("Veuillez entrer un numéro de ticket.");
+    const r = await fetch(`${apiBase}/validate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ticket: t})
+    });
+    const d = await r.json();
+    const result = document.getElementById('result-validation');
+    result.innerText = d.message || d.error;
+    result.style.color = d.message ? "#22c55e" : "red";
+  }
 
-    async function loadHistory() {
-      const status = document.getElementById('statusFilter').value;
-      const r = await fetch(`${apiBase}/history?status=${status}`);
-      const div = document.getElementById('historyList');
-      try {
-        const list = await r.json();
-        if (Array.isArray(list) && list.length > 0) {
-          div.innerHTML = list.map(e => `<div>🕒 ${e}</div>`).join('');
-        } else if (Array.isArray(list)) {
-          div.innerHTML = "<em>Aucun ticket à afficher.</em>";
-        } else if (list.error) {
-          div.innerHTML = `<span style='color:red'>Erreur : ${list.error}</span>`;
-        }
-      } catch (err) {
-        div.innerHTML = "<span style='color:red'>Erreur de chargement de l'historique.</span>";
+  async function verifyTicket() {
+    const t = document.getElementById('ticketInputVerify').value;
+    if (!t) return alert("Veuillez entrer un numéro de ticket.");
+    const r = await fetch(`${apiBase}/verify?ticket=${t}`);
+    const d = await r.json();
+    const result = document.getElementById('result-verification');
+
+    if (d.status) {
+      result.innerText = d.status;
+      if (d.status.includes("validé")) {
+        result.style.color = "#22c55e";
+      } else if (d.status.includes("invalide")) {
+        result.style.color = "#ef4444";
+      } else {
+        result.style.color = "#facc15";
       }
+    } else {
+      result.innerText = d.error || "Erreur inconnue";
+      result.style.color = "red";
     }
+  }
 
-    async function deleteValidated() {
-      const pwd = document.getElementById('adminPass').value;
-      const ticket = document.getElementById('deleteTicket').value;
-      const confirmDelete = confirm(ticket ? `Supprimer le ticket validé N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
-      if (!confirmDelete) return;
+  async function exportData() {
+    const r = await fetch(`${apiBase}/export_word`);
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tickets.docx';
+    a.click();
+  }
 
-      const r = await fetch(`${apiBase}/delete_validated`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: pwd, ticket: ticket || null})
-      });
-      const d = await r.json();
-      document.getElementById('result').innerText = d.message || d.error;
+  async function loadHistory() {
+    const status = document.getElementById('statusFilter').value;
+    const r = await fetch(`${apiBase}/history?status=${status}`);
+    const div = document.getElementById('historyList');
+    try {
+      const list = await r.json();
+      if (Array.isArray(list) && list.length > 0) {
+        div.innerHTML = list.map(e => `<div>🕒 ${e}</div>`).join('');
+      } else if (Array.isArray(list)) {
+        div.innerHTML = "<em>Aucun ticket à afficher.</em>";
+      } else if (list.error) {
+        div.innerHTML = `<span style='color:red'>Erreur : ${list.error}</span>`;
+      }
+    } catch (err) {
+      div.innerHTML = "<span style='color:red'>Erreur de chargement de l'historique.</span>";
     }
-  </script>
+  }
+
+  async function deleteValidated() {
+    const pwd = document.getElementById('adminPass').value;
+    const ticket = document.getElementById('deleteTicket').value;
+    const confirmDelete = confirm(ticket ? `Supprimer le ticket validé N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
+    if (!confirmDelete) return;
+
+    const r = await fetch(`${apiBase}/delete_validated`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd, ticket: ticket || null})
+    });
+    const d = await r.json();
+    document.getElementById('result').innerText = d.message || d.error;
+  }
+</script>
 </body>
 </html>
 """
