@@ -13,7 +13,7 @@ from sqlalchemy import and_, or_
 
 # Configuration
 QR_FOLDER = "qrcodes/"
-DATABASE_URL = "postgresql://ticketdb_lv5y_user:4qwAvxt0DyjosFepOzfBhyV6HltsTe4r@dpg-d1l8n07diees73fc6pog-a.oregon-postgres.render.com/ticketdb_lv5y"
+DATABASE_URL = os.getenv("DATABASE_URL")
 print("✅ Connexion à :", DATABASE_URL)
 
 # Test connexion simple
