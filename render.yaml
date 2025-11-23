@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 2 -b 0.0.0.0:5000 ticket_system_unified:app
+    startCommand: gunicorn ticket_system_unified:app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
