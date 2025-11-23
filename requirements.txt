@@ -8,3 +8,4 @@ matplotlib
 gunicorn
 sqlalchemy
 psycopg2-binary
+werkzeug
