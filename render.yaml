@@ -11,3 +11,4 @@ services:
           name: base_donnee
           property: connectionString
     autoDeploy: true
+
