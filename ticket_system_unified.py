@@ -96,7 +96,7 @@ MOBILE_TEMPLATE = """
       margin-bottom: 30px;
     }
 
-    input, select {
+    input, select, textarea {
       padding: 16px;
       margin: 12px 0;
       border: none;
@@ -104,6 +104,13 @@ MOBILE_TEMPLATE = """
       font-size: 16px;
       width: 100%;
       max-width: 360px;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      color: #0f172a;
     }
 
     button {
@@ -120,7 +127,9 @@ MOBILE_TEMPLATE = """
     }
 
     .validate { background-color: #22c55e; }
+    .validate-bulk { background-color: #16a34a; }
     .verify   { background-color: #3b82f6; }
+    .verify-bulk { background-color: #1d4ed8; }
     .history  { background-color: #f97316; }
     .export   { background-color: #facc15; color: black; }
     .delete   { background-color: #ef4444; }
@@ -139,11 +148,24 @@ MOBILE_TEMPLATE = """
       cursor: pointer;
     }
 
-    #result-validation, #result-verification {
+    #result-validation, #result-verification, #result-bulk-validation, #result-bulk-verification {
       margin-top: 20px;
       font-size: 16px;
       font-weight: bold;
-      color: inherit; /* couleur dynamique via JS */
+      color: inherit;
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .result-details {
+      margin-top: 15px;
+      font-size: 14px;
+      max-width: 360px;
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
     }
   </style>
 </head>
@@ -156,7 +178,21 @@ MOBILE_TEMPLATE = """
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
     <div class="nav-links">
+      <button onclick="showPage('bulk-validation')">📦 Valider en masse</button>
       <button onclick="showPage('verification')">🔍 Vérifier</button>
+      <button onclick="showPage('admin')">🛠️ Admin</button>
+    </div>
+  </div>
+
+  <!-- Page Validation en Masse -->
+  <div class="page" id="bulk-validation">
+    <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
+    <textarea id="bulkTicketsValidate" placeholder="Entrez les numéros de ticket (séparés par des virgules ou des retours à la ligne)&#10;Exemple: 1, 2, 3&#10;ou&#10;1&#10;2&#10;3"></textarea>
+    <button class="validate-bulk" onclick="validateTicketsBulk()">📦 Valider en masse</button>
+    <div id="result-bulk-validation"></div>
+    <div class="nav-links">
+      <button onclick="showPage('validation')">✅ Valider un</button>
+      <button onclick="showPage('bulk-verification')">🔍 Vérifier en masse</button>
       <button onclick="showPage('admin')">🛠️ Admin</button>
     </div>
   </div>
@@ -169,6 +205,20 @@ MOBILE_TEMPLATE = """
     <div id="result-verification"></div>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
+      <button onclick="showPage('bulk-verification')">📦 Vérifier en masse</button>
+      <button onclick="showPage('admin')">🛠️ Admin</button>
+    </div>
+  </div>
+
+  <!-- Page Vérification en Masse -->
+  <div class="page" id="bulk-verification">
+    <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
+    <textarea id="bulkTicketsVerify" placeholder="Entrez les numéros de ticket (séparés par des virgules ou des retours à la ligne)&#10;Exemple: 1, 2, 3&#10;ou&#10;1&#10;2&#10;3"></textarea>
+    <button class="verify-bulk" onclick="verifyTicketsBulk()">📦 Vérifier en masse</button>
+    <div id="result-bulk-verification"></div>
+    <div class="nav-links">
+      <button onclick="showPage('verification')">🔍 Vérifier un</button>
+      <button onclick="showPage('bulk-validation')">📦 Valider en masse</button>
       <button onclick="showPage('admin')">🛠️ Admin</button>
     </div>
   </div>
@@ -216,6 +266,45 @@ MOBILE_TEMPLATE = """
     result.style.color = d.message ? "#22c55e" : "red";
   }
 
+  async function validateTicketsBulk() {
+    const textarea = document.getElementById('bulkTicketsValidate').value;
+    if (!textarea.trim()) return alert("Veuillez entrer au moins un numéro de ticket.");
+    
+    const tickets = textarea
+      .split(/[,\n]/)
+      .map(t => t.trim())
+      .filter(t => t && !isNaN(t))
+      .map(t => parseInt(t));
+    
+    if (tickets.length === 0) return alert("Aucun numéro de ticket valide trouvé.");
+    
+    const r = await fetch(`${apiBase}/validate_bulk`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tickets: tickets})
+    });
+    const d = await r.json();
+    const result = document.getElementById('result-bulk-validation');
+    
+    if (d.message) {
+      result.innerHTML = `
+        <div style="background-color: rgba(34, 197, 94, 0.2); padding: 12px; border-radius: 8px;">
+          <strong>✅ ${d.message}</strong>
+          <div class="result-details">
+            <div>✔️ Validés: ${d.success || 0}</div>
+            <div>⚠️ Échoués: ${d.failed || 0}</div>
+            <div>📊 Total traité: ${d.total || 0}</div>
+          </div>
+        </div>
+      `;
+      result.style.color = "#22c55e";
+      document.getElementById('bulkTicketsValidate').value = '';
+    } else {
+      result.innerText = d.error || "Erreur inconnue";
+      result.style.color = "red";
+    }
+  }
+
   async function verifyTicket() {
     const t = document.getElementById('ticketInputVerify').value;
     if (!t) return alert("Veuillez entrer un numéro de ticket.");
@@ -232,6 +321,55 @@ MOBILE_TEMPLATE = """
       } else {
         result.style.color = "#facc15";
       }
+    } else {
+      result.innerText = d.error || "Erreur inconnue";
+      result.style.color = "red";
+    }
+  }
+
+  async function verifyTicketsBulk() {
+    const textarea = document.getElementById('bulkTicketsVerify').value;
+    if (!textarea.trim()) return alert("Veuillez entrer au moins un numéro de ticket.");
+    
+    const tickets = textarea
+      .split(/[,\n]/)
+      .map(t => t.trim())
+      .filter(t => t && !isNaN(t))
+      .map(t => parseInt(t));
+    
+    if (tickets.length === 0) return alert("Aucun numéro de ticket valide trouvé.");
+    
+    const r = await fetch(`${apiBase}/verify_bulk`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tickets: tickets})
+    });
+    const d = await r.json();
+    const result = document.getElementById('result-bulk-verification');
+    
+    if (d.results) {
+      let html = `
+        <div style="background-color: rgba(59, 130, 246, 0.2); padding: 12px; border-radius: 8px;">
+          <strong>🔍 Résultats de vérification</strong>
+          <div class="result-details">
+            <div>✔️ Validés: ${d.validated || 0}</div>
+            <div>❌ Invalides: ${d.invalid || 0}</div>
+            <div>📊 Total vérifié: ${d.total || 0}</div>
+      `;
+      
+      if (d.details && d.details.length > 0) {
+        html += '<div style="margin-top: 10px; max-height: 200px; overflow-y: auto; font-size: 12px;">';
+        d.details.forEach(detail => {
+          const color = detail.status.includes('validé') ? '#22c55e' : '#ef4444';
+          html += `<div style="color: ${color}; margin: 5px 0;">Ticket ${detail.ticket}: ${detail.status}</div>`;
+        });
+        html += '</div>';
+      }
+      
+      html += '</div></div>';
+      result.innerHTML = html;
+      result.style.color = "#3b82f6";
+      document.getElementById('bulkTicketsVerify').value = '';
     } else {
       result.innerText = d.error || "Erreur inconnue";
       result.style.color = "red";
@@ -315,6 +453,44 @@ def validate():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/validate_bulk', methods=['POST'])
+def validate_bulk():
+    try:
+        data = request.get_json()
+        tickets = data.get('tickets', [])
+        
+        if not isinstance(tickets, list) or len(tickets) == 0:
+            return jsonify({"error": "Aucun ticket fourni"}), 400
+        
+        db = SessionLocal()
+        success_count = 0
+        failed_count = 0
+        
+        for ticket_num in tickets:
+            try:
+                t = int(ticket_num)
+                ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+                if ticket:
+                    ticket.status = f"validé - {t}"
+                else:
+                    ticket = Ticket(ticket_number=t, status=f"validé - {t}")
+                db.add(ticket)
+                success_count += 1
+            except:
+                failed_count += 1
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({
+            "message": f"{success_count} ticket(s) validé(s) avec succès",
+            "success": success_count,
+            "failed": failed_count,
+            "total": len(tickets)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/verify')
 def verify():
     try:
@@ -331,6 +507,61 @@ def verify():
                 result_status = ticket.status
 
         return jsonify({"ticket": t, "status": result_status})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/verify_bulk', methods=['POST'])
+def verify_bulk():
+    try:
+        data = request.get_json()
+        tickets = data.get('tickets', [])
+        
+        if not isinstance(tickets, list) or len(tickets) == 0:
+            return jsonify({"error": "Aucun ticket fourni"}), 400
+        
+        db = SessionLocal()
+        validated_count = 0
+        invalid_count = 0
+        details = []
+        
+        for ticket_num in tickets:
+            try:
+                t = int(ticket_num)
+                ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+                
+                if ticket:
+                    result_status = ticket.status
+                    if "validé" in result_status:
+                        validated_count += 1
+                    else:
+                        invalid_count += 1
+                else:
+                    ticket = Ticket(ticket_number=t, status=f"invalide - {t}")
+                    db.add(ticket)
+                    result_status = ticket.status
+                    invalid_count += 1
+                
+                details.append({
+                    "ticket": t,
+                    "status": result_status
+                })
+            except:
+                invalid_count += 1
+                details.append({
+                    "ticket": ticket_num,
+                    "status": "erreur - numéro invalide"
+                })
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({
+            "results": True,
+            "validated": validated_count,
+            "invalid": invalid_count,
+            "total": len(tickets),
+            "details": details[:10]  # Limiter à 10 détails pour l'affichage
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
