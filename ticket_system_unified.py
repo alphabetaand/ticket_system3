@@ -152,7 +152,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="number" id="ticketInput" placeholder="Numéro de ticket">
+    <input type="tel" inputmode="numeric" id="ticketInput" placeholder="Numéro de ticket" autocomplete="off">
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
     <div class="nav-links">
@@ -164,7 +164,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="number" id="ticketInputVerify" placeholder="Numéro de ticket">
+    <input type="tel" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket" autocomplete="off">
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -184,7 +184,7 @@ MOBILE_TEMPLATE = """
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <input type="number" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)">
+    <input type="tel" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off">
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
@@ -214,6 +214,8 @@ MOBILE_TEMPLATE = """
     const result = document.getElementById('result-validation');
     result.innerText = d.message || d.error;
     result.style.color = d.message ? "#22c55e" : "red";
+    document.getElementById('ticketInput').value = '';
+    document.getElementById('ticketInput').focus();
   }
 
   async function verifyTicket() {
@@ -236,6 +238,8 @@ MOBILE_TEMPLATE = """
       result.innerText = d.error || "Erreur inconnue";
       result.style.color = "red";
     }
+    document.getElementById('ticketInputVerify').value = '';
+    document.getElementById('ticketInputVerify').focus();
   }
 
   async function exportData() {
