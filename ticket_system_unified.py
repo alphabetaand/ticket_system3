@@ -148,13 +148,12 @@ MOBILE_TEMPLATE = """
   </style>
 </head>
 <body>
-
-  <!-- Page Validation -->
+<!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <div style="display:flex; gap:8px; width:100%; max-width:360px;">
       <input type="text" inputmode="numeric" id="ticketInput" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
-      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px;">,</button>
+      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
     </div>
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
@@ -163,11 +162,14 @@ MOBILE_TEMPLATE = """
       <button onclick="showPage('admin')">🛠️ Admin</button>
     </div>
   </div>
-
+  
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
+      <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
+      <button type="button" onclick="insertComma('ticketInputVerify')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
+    </div>
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -187,7 +189,10 @@ MOBILE_TEMPLATE = """
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
+      <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
+      <button type="button" onclick="insertComma('deleteTicket')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
+    </div>
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
