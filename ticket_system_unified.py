@@ -357,7 +357,7 @@ MOBILE_TEMPLATE = """
       return;
     }
     
-    const confirmDelete = confirm(ticket ? `Supprimer le ticket validé N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
+    const confirmDelete = confirm(ticket ? `Supprimer les tickets validés N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
     if (!confirmDelete) return;
 
     const r = await fetch(`${apiBase}/delete_validated`, {
@@ -369,6 +369,7 @@ MOBILE_TEMPLATE = """
     const resultDiv = document.getElementById('result');
     resultDiv.innerText = d.message || d.error;
     resultDiv.style.color = d.message ? "#22c55e" : "red";
+    document.getElementById('deleteTicket').value = '';
   }
 </script>
 </body>
@@ -508,25 +509,35 @@ def delete_validated():
         if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
             return jsonify({"error": "Accès refusé"}), 401
 
-        ticket = data.get("ticket")
+        ticket_input = data.get("ticket", "")
         db = SessionLocal()
-        if ticket and str(ticket).isdigit():
-            deleted = db.query(Ticket).filter(
-                and_(
-                    Ticket.ticket_number == int(ticket),
-                    or_(
-                        Ticket.status == "validé",
-                        Ticket.status.like("validé%")
-                    )
-                )
-            ).delete()
-        else:
+        
+        # Si ticket_input est vide ou None, supprimer tous les tickets validés
+        if not ticket_input:
             deleted = db.query(Ticket).filter(
                 or_(
                     Ticket.status == "validé",
                     Ticket.status.like("validé%")
                 )
             ).delete()
+        else:
+            # Sinon, traiter les numéros (peut être plusieurs séparés par des virgules)
+            raw = str(ticket_input).replace('.', ',')
+            numbers = [n.strip() for n in raw.split(',') if n.strip()]
+            valid_numbers = [int(n) for n in numbers if n.isdigit()]
+            
+            if valid_numbers:
+                deleted = db.query(Ticket).filter(
+                    and_(
+                        Ticket.ticket_number.in_(valid_numbers),
+                        or_(
+                            Ticket.status == "validé",
+                            Ticket.status.like("validé%")
+                        )
+                    )
+                ).delete()
+            else:
+                deleted = 0
                                         
         db.commit()
         db.close()
