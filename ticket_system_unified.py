@@ -441,26 +441,29 @@ def delete_validated():
         if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
             return jsonify({"error": "Accès refusé"}), 401
 
-        ticket = data.get("ticket")
+        raw = str(data.get("ticket") or "")
+        numbers = list(dict.fromkeys(n.strip() for n in raw.split(',') if n.strip()))
+
         db = SessionLocal()
-        if ticket and str(ticket).isdigit():
-              deleted = db.query(Ticket).filter(
-             and_(
-              Ticket.ticket_number == int(ticket),
-               or_(
-                 Ticket.status == "validé",
-                 Ticket.status.like("validé%")
-               )
-           )
-         ).delete()
+        if numbers:
+            valid_numbers = [int(n) for n in numbers if n.isdigit()]
+            deleted = db.query(Ticket).filter(
+                and_(
+                    Ticket.ticket_number.in_(valid_numbers),
+                    or_(
+                        Ticket.status == "validé",
+                        Ticket.status.like("validé%")
+                    )
+                )
+            ).delete(synchronize_session=False)
         else:
-           deleted = db.query(Ticket).filter(
-        or_(
-            Ticket.status == "validé",
-            Ticket.status.like("validé%")
-        )
-       ).delete()
-                                        
+            deleted = db.query(Ticket).filter(
+                or_(
+                    Ticket.status == "validé",
+                    Ticket.status.like("validé%")
+                )
+            ).delete(synchronize_session=False)
+
         db.commit()
         db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
