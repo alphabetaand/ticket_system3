@@ -305,36 +305,63 @@ def home():
 def validate():
     try:
         data = request.get_json()
-        t = int(data.get('ticket'))
+        raw = str(data.get('ticket', ''))
+        numbers = [n.strip() for n in raw.split(',') if n.strip()]
+        if not numbers:
+            return jsonify({"error": "Aucun numéro de ticket fourni"}), 400
+
+        messages = []
+        errors = []
         db = SessionLocal()
-        ticket = db.query(Ticket).filter_by(ticket_number=t).first()
-        if ticket:
-           ticket.status = f"validé - {t}"
-        else:
-          ticket = Ticket(ticket_number=t, status=f"validé - {t}")
-        db.add(ticket)
+        for n in numbers:
+            if not n.isdigit():
+                errors.append(f"'{n}' invalide")
+                continue
+            t = int(n)
+            ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+            if ticket:
+                ticket.status = f"validé - {t}"
+            else:
+                ticket = Ticket(ticket_number=t, status=f"validé - {t}")
+                db.add(ticket)
+            messages.append(f"Ticket {t} validé")
         db.commit()
         db.close()
-        return jsonify({"message": f"Ticket {t} validé"})
+
+        response = {}
+        if messages:
+            response["message"] = " | ".join(messages)
+        if errors:
+            response["error"] = " | ".join(errors)
+        return jsonify(response)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/verify')
 def verify():
     try:
-        t = request.args.get('ticket')
+        raw = request.args.get('ticket', '')
+        numbers = [n.strip() for n in raw.split(',') if n.strip()]
+        if not numbers:
+            return jsonify({"error": "Aucun numéro de ticket fourni"}), 400
+
+        results = []
         with SessionLocal() as db:
-            ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+            for n in numbers:
+                if not n.isdigit():
+                    results.append(f"{n}: numéro invalide")
+                    continue
+                t = int(n)
+                ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+                if ticket:
+                    results.append(ticket.status)
+                else:
+                    ticket = Ticket(ticket_number=t, status=f"invalide - {t}")
+                    db.add(ticket)
+                    db.commit()
+                    results.append(ticket.status)
 
-            if ticket:
-                result_status = ticket.status
-            else:
-                ticket = Ticket(ticket_number=int(t), status=f"invalide - {t}")
-                db.add(ticket)
-                db.commit()
-                result_status = ticket.status
-
-        return jsonify({"ticket": t, "status": result_status})
+        return jsonify({"ticket": raw, "status": " | ".join(results)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
