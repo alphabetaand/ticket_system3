@@ -143,7 +143,30 @@ MOBILE_TEMPLATE = """
       margin-top: 20px;
       font-size: 16px;
       font-weight: bold;
-      color: inherit; /* couleur dynamique via JS */
+      color: inherit;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .input-group input {
+      flex: 1;
+      margin: 12px 0;
+    }
+
+    .input-group button {
+      width: 60px;
+      margin: 12px 0;
+      padding: 16px;
+      background: #475569;
+      border-radius: 12px;
+      color: white;
+      font-weight: bold;
+      font-size: 20px;
     }
   </style>
 </head>
@@ -152,9 +175,9 @@ MOBILE_TEMPLATE = """
   <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
-      <input type="text" inputmode="numeric" id="ticketInput" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
-      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px;">,</button>
+    <div class="input-group">
+      <input type="text" inputmode="numeric" id="ticketInput" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*">
+      <button type="button" onclick="insertComma('ticketInput')">,</button>
     </div>
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
@@ -167,7 +190,10 @@ MOBILE_TEMPLATE = """
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+    <div class="input-group">
+      <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+      <button type="button" onclick="insertComma('ticketInputVerify')">,</button>
+    </div>
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -187,7 +213,10 @@ MOBILE_TEMPLATE = """
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+    <div class="input-group">
+      <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+      <button type="button" onclick="insertComma('deleteTicket')">,</button>
+    </div>
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
@@ -219,9 +248,7 @@ MOBILE_TEMPLATE = """
   
   // Fonction utilitaire pour normaliser les numéros de tickets
   function parseTicketNumbers(raw) {
-    // Remplacer les points par des virgules
     raw = raw.replace(/\./g, ',');
-    // Diviser par les virgules et nettoyer
     return raw.split(',').map(n => n.trim()).filter(n => n.length > 0);
   }
 
@@ -267,12 +294,25 @@ MOBILE_TEMPLATE = """
   }
 
   async function exportData() {
-    const r = await fetch(`${apiBase}/export_word`);
-    const blob = await r.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'tickets.docx';
-    a.click();
+    const pwd = document.getElementById('adminPass').value;
+    if (!pwd) {
+      alert("Veuillez entrer le mot de passe admin.");
+      return;
+    }
+    const r = await fetch(`${apiBase}/export_word`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd})
+    });
+    if (r.ok) {
+      const blob = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'tickets.docx';
+      a.click();
+    } else {
+      alert("Accès refusé - mot de passe incorrect.");
+    }
   }
 
   async function loadHistory() {
@@ -283,16 +323,25 @@ MOBILE_TEMPLATE = """
     }
     
     const status = document.getElementById('statusFilter').value;
-    const r = await fetch(`${apiBase}/history?status=${status}`);
+    const r = await fetch(`${apiBase}/history?status=${status}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd})
+    });
     const div = document.getElementById('historyList');
     try {
-      const list = await r.json();
+      const data = await r.json();
+      if (data.error) {
+        div.innerHTML = `<span style='color:red'>Erreur : ${data.error}</span>`;
+        return;
+      }
+      const list = data.results || data;
       if (Array.isArray(list) && list.length > 0) {
         div.innerHTML = list.map(e => `<div>🕒 ${e}</div>`).join('');
       } else if (Array.isArray(list)) {
         div.innerHTML = "<em>Aucun ticket à afficher.</em>";
-      } else if (list.error) {
-        div.innerHTML = `<span style='color:red'>Erreur : ${list.error}</span>`;
+      } else {
+        div.innerHTML = "<em>Aucun ticket à afficher.</em>";
       }
     } catch (err) {
       div.innerHTML = "<span style='color:red'>Erreur de chargement de l'historique.</span>";
@@ -317,8 +366,9 @@ MOBILE_TEMPLATE = """
       body: JSON.stringify({password: pwd, ticket: ticket || null})
     });
     const d = await r.json();
-    document.getElementById('result').innerText = d.message || d.error;
-    document.getElementById('result').style.color = d.message ? "#22c55e" : "red";
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerText = d.message || d.error;
+    resultDiv.style.color = d.message ? "#22c55e" : "red";
   }
 </script>
 </body>
@@ -343,7 +393,6 @@ def validate():
     try:
         data = request.get_json()
         raw = str(data.get('ticket', ''))
-        # Normaliser : remplacer les points par des virgules
         raw = raw.replace('.', ',')
         numbers = [n.strip() for n in raw.split(',') if n.strip()]
         if not numbers:
@@ -380,7 +429,6 @@ def validate():
 def verify():
     try:
         raw = request.args.get('ticket', '')
-        # Normaliser : remplacer les points par des virgules
         raw = raw.replace('.', ',')
         numbers = [n.strip() for n in raw.split(',') if n.strip()]
         if not numbers:
@@ -406,9 +454,13 @@ def verify():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/export_word')
+@app.route('/export_word', methods=['POST'])
 def export_word():
     try:
+        data = request.get_json()
+        if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
+            return jsonify({"error": "Accès refusé"}), 401
+
         doc = Document()
         doc.add_heading("Tickets Validés", 0)
 
@@ -459,22 +511,22 @@ def delete_validated():
         ticket = data.get("ticket")
         db = SessionLocal()
         if ticket and str(ticket).isdigit():
-              deleted = db.query(Ticket).filter(
-             and_(
-              Ticket.ticket_number == int(ticket),
-               or_(
-                 Ticket.status == "validé",
-                 Ticket.status.like("validé%")
-               )
-           )
-         ).delete()
+            deleted = db.query(Ticket).filter(
+                and_(
+                    Ticket.ticket_number == int(ticket),
+                    or_(
+                        Ticket.status == "validé",
+                        Ticket.status.like("validé%")
+                    )
+                )
+            ).delete()
         else:
-           deleted = db.query(Ticket).filter(
-        or_(
-            Ticket.status == "validé",
-            Ticket.status.like("validé%")
-        )
-       ).delete()
+            deleted = db.query(Ticket).filter(
+                or_(
+                    Ticket.status == "validé",
+                    Ticket.status.like("validé%")
+                )
+            ).delete()
                                         
         db.commit()
         db.close()
@@ -482,9 +534,15 @@ def delete_validated():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/history')
+@app.route('/history', methods=['POST', 'GET'])
 def history():
     try:
+        # Vérifier le mot de passe s'il y a une requête POST
+        if request.method == 'POST':
+            data = request.get_json()
+            if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
+                return jsonify({"error": "Accès refusé"}), 401
+        
         status = request.args.get("status")
         db = SessionLocal()
         query = db.query(Ticket)
@@ -495,9 +553,11 @@ def history():
         results = query.order_by(Ticket.timestamp.desc()).limit(MAX_HISTORY_ENTRIES).all()
         db.close()
 
-        return jsonify([
-            f"Ticket {r.ticket_number} - {r.status} - {r.timestamp}" for r in results
-        ])
+        return jsonify({
+            "results": [
+                f"Ticket {r.ticket_number} - {r.status} - {r.timestamp}" for r in results
+            ]
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
