@@ -1,7 +1,7 @@
 import os 
 import logging
 import psycopg2
-from flask import Flask, request, jsonify, render_template_string, send_file
+from flask import Flask, request, jsonify, render_template_string, send_file, make_response
 from flask_cors import CORS
 from passlib.context import CryptContext
 from docx import Document
@@ -62,6 +62,9 @@ MOBILE_TEMPLATE = """
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Saint Anne Show</title>
   <link rel="icon" href="/static/icon.png" type="image/png">
   <link rel="apple-touch-icon" href="/static/icon.png">
@@ -383,11 +386,18 @@ CORS(app)
 def add_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
     return response
 
 @app.route('/')
 def home():
-    return render_template_string(MOBILE_TEMPLATE)
+    response = make_response(render_template_string(MOBILE_TEMPLATE))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/validate', methods=['POST'])
 def validate():
