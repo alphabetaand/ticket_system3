@@ -207,6 +207,14 @@ MOBILE_TEMPLATE = """
     event.target.value = value;
   }
 
+  // Fonction utilitaire pour normaliser les numéros de tickets
+  function parseTicketNumbers(raw) {
+    // Remplacer les points par des virgules
+    raw = raw.replace(/\./g, ',');
+    // Diviser par les virgules et nettoyer
+    return raw.split(',').map(n => n.trim()).filter(n => n.length > 0);
+  }
+
   const apiBase = window.location.origin;
 
   async function validateTicket() {
@@ -228,7 +236,7 @@ MOBILE_TEMPLATE = """
   async function verifyTicket() {
     const t = document.getElementById('ticketInputVerify').value;
     if (!t) return alert("Veuillez entrer un numéro de ticket.");
-    const r = await fetch(`${apiBase}/verify?ticket=${t}`);
+    const r = await fetch(`${apiBase}/verify?ticket=${encodeURIComponent(t)}`);
     const d = await r.json();
     const result = document.getElementById('result-verification');
 
@@ -312,6 +320,8 @@ def validate():
     try:
         data = request.get_json()
         raw = str(data.get('ticket', ''))
+        # Normaliser : remplacer les points par des virgules
+        raw = raw.replace('.', ',')
         numbers = [n.strip() for n in raw.split(',') if n.strip()]
         if not numbers:
             return jsonify({"error": "Aucun numéro de ticket fourni"}), 400
@@ -347,6 +357,8 @@ def validate():
 def verify():
     try:
         raw = request.args.get('ticket', '')
+        # Normaliser : remplacer les points par des virgules
+        raw = raw.replace('.', ',')
         numbers = [n.strip() for n in raw.split(',') if n.strip()]
         if not numbers:
             return jsonify({"error": "Aucun numéro de ticket fourni"}), 400
