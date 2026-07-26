@@ -152,7 +152,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="text" inputmode="decimal" id="ticketInput" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*">
+    <input type="text" inputmode="numeric" id="ticketInput" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
     <div class="nav-links">
@@ -164,7 +164,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="text" inputmode="decimal" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*">
+    <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -184,7 +184,7 @@ MOBILE_TEMPLATE = """
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <input type="text" inputmode="decimal" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*">
+    <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
@@ -198,6 +198,13 @@ MOBILE_TEMPLATE = """
   function showPage(id) {
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     document.getElementById(id).classList.add("active");
+  }
+
+  // Convertir automatiquement les points en virgules
+  function formatTicketInput(event) {
+    let value = event.target.value;
+    value = value.replace(/\./g, ',');
+    event.target.value = value;
   }
 
   const apiBase = window.location.origin;
