@@ -139,7 +139,7 @@ MOBILE_TEMPLATE = """
       cursor: pointer;
     }
 
-    #result-validation, #result-verification {
+    #result-validation, #result-verification, #result {
       margin-top: 20px;
       font-size: 16px;
       font-weight: bold;
@@ -148,12 +148,13 @@ MOBILE_TEMPLATE = """
   </style>
 </head>
 <body>
-<!-- Page Validation -->
+
+  <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <div style="display:flex; gap:8px; width:100%; max-width:360px;">
       <input type="text" inputmode="numeric" id="ticketInput" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
-      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
+      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px;">,</button>
     </div>
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
@@ -162,14 +163,11 @@ MOBILE_TEMPLATE = """
       <button onclick="showPage('admin')">🛠️ Admin</button>
     </div>
   </div>
-  
+
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
-      <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
-      <button type="button" onclick="insertComma('ticketInputVerify')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
-    </div>
+    <input type="text" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -182,17 +180,14 @@ MOBILE_TEMPLATE = """
   <div class="page" id="admin">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <input type="password" id="adminPass" placeholder="Mot de passe admin">
-    <select id="statusFilter" onchange="loadHistory()">
+    <select id="statusFilter">
       <option value="">Tous les statuts</option>
       <option value="validé">Validé</option>
       <option value="invalide">Invalide</option>
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
-      <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
-      <button type="button" onclick="insertComma('deleteTicket')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px; color:white; font-weight:bold; font-size:20px;">,</button>
-    </div>
+    <input type="text" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
@@ -207,12 +202,19 @@ MOBILE_TEMPLATE = """
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     document.getElementById(id).classList.add("active");
   }
- function insertComma(inputId) {
+  
+  function insertComma(inputId) {
     const input = document.getElementById(inputId);
     if (input.value && !input.value.endsWith(',')) {
       input.value += ',';
     }
     input.focus();
+  }
+  
+  // Fonction pour formater les numéros de tickets (remplace les points par des virgules)
+  function formatTicketInput(event) {
+    const input = event.target;
+    input.value = input.value.replace(/\./g, ',');
   }
   
   // Fonction utilitaire pour normaliser les numéros de tickets
@@ -274,6 +276,12 @@ MOBILE_TEMPLATE = """
   }
 
   async function loadHistory() {
+    const pwd = document.getElementById('adminPass').value;
+    if (!pwd) {
+      alert("Veuillez entrer le mot de passe admin.");
+      return;
+    }
+    
     const status = document.getElementById('statusFilter').value;
     const r = await fetch(`${apiBase}/history?status=${status}`);
     const div = document.getElementById('historyList');
@@ -294,6 +302,12 @@ MOBILE_TEMPLATE = """
   async function deleteValidated() {
     const pwd = document.getElementById('adminPass').value;
     const ticket = document.getElementById('deleteTicket').value;
+    
+    if (!pwd) {
+      alert("Veuillez entrer le mot de passe admin.");
+      return;
+    }
+    
     const confirmDelete = confirm(ticket ? `Supprimer le ticket validé N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
     if (!confirmDelete) return;
 
@@ -304,6 +318,7 @@ MOBILE_TEMPLATE = """
     });
     const d = await r.json();
     document.getElementById('result').innerText = d.message || d.error;
+    document.getElementById('result').style.color = d.message ? "#22c55e" : "red";
   }
 </script>
 </body>
@@ -441,29 +456,26 @@ def delete_validated():
         if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
             return jsonify({"error": "Accès refusé"}), 401
 
-        raw = str(data.get("ticket") or "")
-        numbers = list(dict.fromkeys(n.strip() for n in raw.split(',') if n.strip()))
-
+        ticket = data.get("ticket")
         db = SessionLocal()
-        if numbers:
-            valid_numbers = [int(n) for n in numbers if n.isdigit()]
-            deleted = db.query(Ticket).filter(
-                and_(
-                    Ticket.ticket_number.in_(valid_numbers),
-                    or_(
-                        Ticket.status == "validé",
-                        Ticket.status.like("validé%")
-                    )
-                )
-            ).delete(synchronize_session=False)
+        if ticket and str(ticket).isdigit():
+              deleted = db.query(Ticket).filter(
+             and_(
+              Ticket.ticket_number == int(ticket),
+               or_(
+                 Ticket.status == "validé",
+                 Ticket.status.like("validé%")
+               )
+           )
+         ).delete()
         else:
-            deleted = db.query(Ticket).filter(
-                or_(
-                    Ticket.status == "validé",
-                    Ticket.status.like("validé%")
-                )
-            ).delete(synchronize_session=False)
-
+           deleted = db.query(Ticket).filter(
+        or_(
+            Ticket.status == "validé",
+            Ticket.status.like("validé%")
+        )
+       ).delete()
+                                        
         db.commit()
         db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
