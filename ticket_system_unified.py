@@ -152,7 +152,10 @@ MOBILE_TEMPLATE = """
   <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="text" inputmode="numeric" id="ticketInput" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*" oninput="formatTicketInput(event)">
+    <div style="display:flex; gap:8px; width:100%; max-width:360px;">
+      <input type="text" inputmode="numeric" id="ticketInput" placeholder="Ex: 123,456,789" autocomplete="off" pattern="[0-9,]*" style="flex:1;">
+      <button type="button" onclick="insertComma('ticketInput')" style="width:60px; margin:12px 0; padding:16px; background:#475569; border-radius:12px;">,</button>
+    </div>
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
     <div class="nav-links">
@@ -199,14 +202,14 @@ MOBILE_TEMPLATE = """
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     document.getElementById(id).classList.add("active");
   }
-
-  // Convertir automatiquement les points en virgules
-  function formatTicketInput(event) {
-    let value = event.target.value;
-    value = value.replace(/\./g, ',');
-    event.target.value = value;
+ function insertComma(inputId) {
+    const input = document.getElementById(inputId);
+    if (input.value && !input.value.endsWith(',')) {
+      input.value += ',';
+    }
+    input.focus();
   }
-
+  
   // Fonction utilitaire pour normaliser les numéros de tickets
   function parseTicketNumbers(raw) {
     // Remplacer les points par des virgules
