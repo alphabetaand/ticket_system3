@@ -218,30 +218,28 @@ MOBILE_TEMPLATE = """
     document.getElementById('ticketInput').focus();
   }
 
-  async function verifyTicket() {
-    const t = document.getElementById('ticketInputVerify').value;
-    if (!t) return alert("Veuillez entrer un numéro de ticket.");
-    const r = await fetch(`${apiBase}/verify?ticket=${t}`);
-    const d = await r.json();
-    const result = document.getElementById('result-verification');
+ async function verifyTicket() {
+  const t = document.getElementById('ticketInputVerify').value;
+  if (!t) return alert("Veuillez entrer un numéro de ticket.");
+  const r = await fetch(`${apiBase}/verify?ticket=${t}`);
+  const d = await r.json();
+  const result = document.getElementById('result-verification');
 
-    if (d.status) {
-      result.innerText = d.status;
-      if (d.status.includes("validé")) {
-        result.style.color = "#22c55e";
-      } else if (d.status.includes("invalide")) {
-        result.style.color = "#ef4444";
-      } else {
-        result.style.color = "#facc15";
-      }
-    } else {
-      result.innerText = d.error || "Erreur inconnue";
-      result.style.color = "red";
-    }
-    document.getElementById('ticketInputVerify').value = '';
-    document.getElementById('ticketInputVerify').focus();
+  if (d.results) {
+    result.innerHTML = d.results.map(item => {
+      let color;
+      if (item.status.includes("validé")) color = "#22c55e";
+      else if (item.status.includes("invalide")) color = "#ef4444";
+      else color = "#facc15";
+      return `<div style="color:${color}">Ticket ${item.ticket}: ${item.status}</div>`;
+    }).join('');
+  } else {
+    result.innerText = d.error || "Erreur inconnue";
+    result.style.color = "red";
   }
-
+  document.getElementById('ticketInputVerify').value = '';
+  document.getElementById('ticketInputVerify').focus();
+}
   async function exportData() {
     const r = await fetch(`${apiBase}/export_word`);
     const blob = await r.blob();
@@ -349,19 +347,19 @@ def verify():
         with SessionLocal() as db:
             for n in numbers:
                 if not n.isdigit():
-                    results.append(f"{n}: numéro invalide")
+                    results.append({"ticket": n, "status": "numéro invalide"})
                     continue
                 t = int(n)
                 ticket = db.query(Ticket).filter_by(ticket_number=t).first()
                 if ticket:
-                    results.append(ticket.status)
+                    results.append({"ticket": t, "status": ticket.status})
                 else:
                     ticket = Ticket(ticket_number=t, status=f"invalide - {t}")
                     db.add(ticket)
                     db.commit()
-                    results.append(ticket.status)
+                    results.append({"ticket": t, "status": ticket.status})
 
-        return jsonify({"ticket": raw, "status": " | ".join(results)})
+        return jsonify({"results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
