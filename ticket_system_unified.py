@@ -152,7 +152,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="tel" inputmode="numeric" id="ticketInput" placeholder="Numéro de ticket" autocomplete="off">
+    <input type="text" inputmode="decimal" id="ticketInput" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*">
     <button class="validate" onclick="validateTicket()">✅ Valider</button>
     <div id="result-validation"></div>
     <div class="nav-links">
@@ -164,7 +164,7 @@ MOBILE_TEMPLATE = """
   <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
-    <input type="tel" inputmode="numeric" id="ticketInputVerify" placeholder="Numéro de ticket" autocomplete="off">
+    <input type="text" inputmode="decimal" id="ticketInputVerify" placeholder="Numéro de ticket (ex: 123,456,789)" autocomplete="off" pattern="[0-9,]*">
     <button class="verify" onclick="verifyTicket()">🔍 Vérifier</button>
     <div id="result-verification"></div>
     <div class="nav-links">
@@ -184,7 +184,7 @@ MOBILE_TEMPLATE = """
     </select>
     <button class="history" onclick="loadHistory()">📄 Historique</button>
     <button class="export" onclick="exportData()">📤 Exporter (.docx)</button>
-    <input type="tel" inputmode="numeric" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off">
+    <input type="text" inputmode="decimal" id="deleteTicket" placeholder="Ticket à supprimer (vide = tous)" autocomplete="off" pattern="[0-9,]*">
     <button class="delete" onclick="deleteValidated()">🗑️ Supprimer</button>
     <div class="nav-links">
       <button onclick="showPage('validation')">✅ Valider</button>
@@ -218,28 +218,29 @@ MOBILE_TEMPLATE = """
     document.getElementById('ticketInput').focus();
   }
 
- async function verifyTicket() {
-  const t = document.getElementById('ticketInputVerify').value;
-  if (!t) return alert("Veuillez entrer un numéro de ticket.");
-  const r = await fetch(`${apiBase}/verify?ticket=${t}`);
-  const d = await r.json();
-  const result = document.getElementById('result-verification');
+  async function verifyTicket() {
+    const t = document.getElementById('ticketInputVerify').value;
+    if (!t) return alert("Veuillez entrer un numéro de ticket.");
+    const r = await fetch(`${apiBase}/verify?ticket=${t}`);
+    const d = await r.json();
+    const result = document.getElementById('result-verification');
 
-  if (d.results) {
-    result.innerHTML = d.results.map(item => {
-      let color;
-      if (item.status.includes("validé")) color = "#22c55e";
-      else if (item.status.includes("invalide")) color = "#ef4444";
-      else color = "#facc15";
-      return `<div style="color:${color}">Ticket ${item.ticket}: ${item.status}</div>`;
-    }).join('');
-  } else {
-    result.innerText = d.error || "Erreur inconnue";
-    result.style.color = "red";
+    if (d.results) {
+      result.innerHTML = d.results.map(item => {
+        let color;
+        if (item.status.includes("validé")) color = "#22c55e";
+        else if (item.status.includes("invalide")) color = "#ef4444";
+        else color = "#facc15";
+        return `<div style="color:${color}">Ticket ${item.ticket}: ${item.status}</div>`;
+      }).join('');
+    } else {
+      result.innerText = d.error || "Erreur inconnue";
+      result.style.color = "red";
+    }
+    document.getElementById('ticketInputVerify').value = '';
+    document.getElementById('ticketInputVerify').focus();
   }
-  document.getElementById('ticketInputVerify').value = '';
-  document.getElementById('ticketInputVerify').focus();
-}
+
   async function exportData() {
     const r = await fetch(`${apiBase}/export_word`);
     const blob = await r.blob();
