@@ -1,4 +1,4 @@
-import os 
+import os
 import logging
 import psycopg2
 from flask import Flask, request, jsonify, render_template_string, send_file, make_response
@@ -7,8 +7,8 @@ from passlib.context import CryptContext
 from docx import Document
 from io import BytesIO
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, Float, ForeignKey, Boolean, Text
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy import and_, or_
 
 # Configuration
@@ -42,20 +42,149 @@ ADMIN_PASSWORD_HASH = pwd_context.hash(ADMIN_PASSWORD)
 # Créer base de données
 os.makedirs(QR_FOLDER, exist_ok=True)
 
+# ==============================================
+# ETAPE 1 : modèle de vente de billets en ligne
+# ==============================================
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    username = Column(String, unique=True, nullable=True, index=True)
+    full_name = Column(String, default="")
+    phone = Column(String, default="")
+    password_hash = Column(String, nullable=False)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    orders = relationship("Order", back_populates="user")
+    tickets = relationship("Ticket", back_populates="buyer")
+
+
+class Event(Base):
+    __tablename__ = "events"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    location = Column(String, default="")
+    date = Column(DateTime, nullable=False)
+    category = Column(String, default="concert")
+    image_url = Column(String, default="")
+    base_price = Column(Float, nullable=False, default=0.0)
+    total_capacity = Column(Integer, default=100)
+    available_quantity = Column(Integer, default=100)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    tickets = relationship("Ticket", back_populates="event")
+    order_items = relationship("OrderItem", back_populates="event")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True, index=True)
+    order_number = Column(String, unique=True, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    total_amount = Column(Float, nullable=False, default=0.0)
+    fee_amount = Column(Float, nullable=False, default=0.0)
+    status = Column(String, default="pending")
+    payment_method = Column(String, default="")
+    payment_provider = Column(String, default="")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="orders")
+    items = relationship("OrderItem", back_populates="order")
+    tickets = relationship("Ticket", back_populates="order")
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    unit_price = Column(Float, nullable=False, default=0.0)
+    total_price = Column(Float, nullable=False, default=0.0)
+
+    order = relationship("Order", back_populates="items")
+    event = relationship("Event", back_populates="order_items")
+
+
 class Ticket(Base):
     __tablename__ = "tickets"
-    ticket_number = Column(Integer, primary_key=True, index=True)
-    status = Column(String, default='invalide')
-    qr_hash = Column(String, unique=True, nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_number = Column(String, unique=True, nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default='valid')
+    qr_hash = Column(String, nullable=True)
     timestamp = Column(DateTime, default=func.now())
+    scanned_at = Column(DateTime, nullable=True)
+
+    event = relationship("Event", back_populates="tickets")
+    order = relationship("Order", back_populates="tickets")
+    buyer = relationship("User", back_populates="tickets")
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)
 
+
+def seed_demo_events():
+    db = SessionLocal()
+    count = db.query(Event).count()
+    if count == 0:
+        db.add_all([
+            Event(
+                title="Concert Live Night",
+                description="Soirée musicale en plein air avec artistes locaux et internationaux.",
+                location="Dakar, Sénégal",
+                date=datetime(2026, 11, 15, 20, 0),
+                category="concert",
+                image_url="",
+                base_price=15000.0,
+                total_capacity=500,
+                available_quantity=500,
+                is_active=True,
+            ),
+            Event(
+                title="Festival Culture & Arts",
+                description="Festival de musique, danse et arts visuels dans un cadre culturel.",
+                location="Saint-Louis, Sénégal",
+                date=datetime(2026, 12, 02, 18, 30),
+                category="festival",
+                image_url="",
+                base_price=12000.0,
+                total_capacity=300,
+                available_quantity=300,
+                is_active=True,
+            ),
+            Event(
+                title="Match de Gala",
+                description="Rencontre sportive de gala avec tribunes et zones VIP.",
+                location="Thiès, Sénégal",
+                date=datetime(2026, 12, 20, 19, 0),
+                category="sport",
+                image_url="",
+                base_price=18000.0,
+                total_capacity=250,
+                available_quantity=250,
+                is_active=True,
+            ),
+        ])
+        db.commit()
+    db.close()
+
+
 init_db()
+seed_demo_events()
 
 # Interface mobile HTML
-with open("static/icon.png", "rb") as f: pass  # vérifie que l'icône existe
+with open("static/icon.png", "rb") as f: pass
 MOBILE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -175,7 +304,6 @@ MOBILE_TEMPLATE = """
 </head>
 <body>
 
-  <!-- Page Validation -->
   <div class="page active" id="validation">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <div class="input-group">
@@ -190,7 +318,6 @@ MOBILE_TEMPLATE = """
     </div>
   </div>
 
-  <!-- Page Vérification -->
   <div class="page" id="verification">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <div class="input-group">
@@ -205,7 +332,6 @@ MOBILE_TEMPLATE = """
     </div>
   </div>
 
-  <!-- Page Admin -->
   <div class="page" id="admin">
     <div class="logo"><img src="/static/logo.png" alt="Sainte Anne Show"></div>
     <input type="password" id="adminPass" placeholder="Mot de passe admin">
@@ -234,7 +360,7 @@ MOBILE_TEMPLATE = """
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     document.getElementById(id).classList.add("active");
   }
-  
+
   function insertComma(inputId) {
     const input = document.getElementById(inputId);
     if (input.value && !input.value.endsWith(',')) {
@@ -242,14 +368,12 @@ MOBILE_TEMPLATE = """
     }
     input.focus();
   }
-  
-  // Fonction pour formater les numéros de tickets (remplace les points par des virgules)
+
   function formatTicketInput(event) {
     const input = event.target;
     input.value = input.value.replace(/\./g, ',');
   }
-  
-  // Fonction utilitaire pour normaliser les numéros de tickets
+
   function parseTicketNumbers(raw) {
     raw = raw.replace(/\./g, ',');
     return raw.split(',').map(n => n.trim()).filter(n => n.length > 0);
@@ -324,7 +448,7 @@ MOBILE_TEMPLATE = """
       alert("Veuillez entrer le mot de passe admin.");
       return;
     }
-    
+
     const status = document.getElementById('statusFilter').value;
     const r = await fetch(`${apiBase}/history?status=${status}`, {
       method: 'POST',
@@ -354,12 +478,12 @@ MOBILE_TEMPLATE = """
   async function deleteValidated() {
     const pwd = document.getElementById('adminPass').value;
     const ticket = document.getElementById('deleteTicket').value;
-    
+
     if (!pwd) {
       alert("Veuillez entrer le mot de passe admin.");
       return;
     }
-    
+
     const confirmDelete = confirm(ticket ? `Supprimer les tickets validés N°${ticket} ?` : "Confirmer la suppression de tous les tickets validés ?");
     if (!confirmDelete) return;
 
@@ -378,7 +502,7 @@ MOBILE_TEMPLATE = """
 </body>
 </html>
 """
-# Flask App
+
 app = Flask(__name__)
 CORS(app)
 
@@ -399,6 +523,27 @@ def home():
     response.headers['Expires'] = '0'
     return response
 
+@app.route('/api/events', methods=['GET'])
+def api_events():
+    try:
+        db = SessionLocal()
+        events = db.query(Event).filter(Event.is_active == True).order_by(Event.date.asc()).all()
+        db.close()
+        payload = [{
+            "id": e.id,
+            "title": e.title,
+            "description": e.description,
+            "location": e.location,
+            "date": e.date.isoformat() if e.date else None,
+            "category": e.category,
+            "base_price": float(e.base_price),
+            "total_capacity": e.total_capacity,
+            "available_quantity": e.available_quantity,
+        } for e in events]
+        return jsonify(payload), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/validate', methods=['POST'])
 def validate():
     try:
@@ -417,11 +562,11 @@ def validate():
                 errors.append(f"'{n}' invalide")
                 continue
             t = int(n)
-            ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+            ticket = db.query(Ticket).filter(Ticket.ticket_number == str(t)).first()
             if ticket:
                 ticket.status = f"validé - {t}"
             else:
-                ticket = Ticket(ticket_number=t, status=f"validé - {t}")
+                ticket = Ticket(ticket_number=str(t), event_id=1, order_id=1, buyer_id=1, status=f"validé - {t}")
                 db.add(ticket)
             messages.append(f"Ticket {t} validé")
         db.commit()
@@ -452,14 +597,11 @@ def verify():
                     results.append({"ticket": n, "status": "numéro invalide"})
                     continue
                 t = int(n)
-                ticket = db.query(Ticket).filter_by(ticket_number=t).first()
+                ticket = db.query(Ticket).filter(Ticket.ticket_number == str(t)).first()
                 if ticket:
                     results.append({"ticket": t, "status": ticket.status})
                 else:
-                    ticket = Ticket(ticket_number=t, status=f"invalide - {t}")
-                    db.add(ticket)
-                    db.commit()
-                    results.append({"ticket": t, "status": ticket.status})
+                    results.append({"ticket": t, "status": f"invalide - {t}"})
 
         return jsonify({"results": results})
     except Exception as e:
@@ -477,11 +619,11 @@ def export_word():
 
         db = SessionLocal()
         results = db.query(Ticket).filter(
-          or_(
-        Ticket.status == 'validé',
-        Ticket.status.like('validé%')
-       )
-    ).all()
+            or_(
+                Ticket.status == 'validé',
+                Ticket.status.like('validé%')
+            )
+        ).all()
         db.close()
 
         if not results:
@@ -521,8 +663,7 @@ def delete_validated():
 
         ticket_input = data.get("ticket", "")
         db = SessionLocal()
-        
-        # Si ticket_input est vide ou None, supprimer tous les tickets validés
+
         if not ticket_input:
             deleted = db.query(Ticket).filter(
                 or_(
@@ -531,11 +672,10 @@ def delete_validated():
                 )
             ).delete()
         else:
-            # Sinon, traiter les numéros (peut être plusieurs séparés par des virgules)
             raw = str(ticket_input).replace('.', ',')
             numbers = [n.strip() for n in raw.split(',') if n.strip()]
-            valid_numbers = [int(n) for n in numbers if n.isdigit()]
-            
+            valid_numbers = [str(int(n)) for n in numbers if n.isdigit()]
+
             if valid_numbers:
                 deleted = db.query(Ticket).filter(
                     and_(
@@ -548,7 +688,7 @@ def delete_validated():
                 ).delete()
             else:
                 deleted = 0
-                                        
+
         db.commit()
         db.close()
         return jsonify({"message": f"{deleted} ticket(s) supprimé(s)."})
@@ -558,12 +698,11 @@ def delete_validated():
 @app.route('/history', methods=['POST', 'GET'])
 def history():
     try:
-        # Vérifier le mot de passe s'il y a une requête POST
         if request.method == 'POST':
             data = request.get_json()
             if not pwd_context.verify(data.get('password', ''), ADMIN_PASSWORD_HASH):
                 return jsonify({"error": "Accès refusé"}), 401
-        
+
         status = request.args.get("status")
         db = SessionLocal()
         query = db.query(Ticket)
@@ -585,5 +724,6 @@ def history():
 @app.route('/ping')
 def ping():
     return "pong", 200
+
 if __name__ == '__main__':
- app.run(host='0.0.0.0', port=FLASK_PORT)
+    app.run(host='0.0.0.0', port=FLASK_PORT)
