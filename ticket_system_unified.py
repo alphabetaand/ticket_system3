@@ -93,6 +93,11 @@ class Order(Base):
     status = Column(String, default="pending")
     payment_method = Column(String, default="")
     payment_provider = Column(String, default="")
+    payer_name = Column(String, default="")
+    payer_phone = Column(String, default="")
+    payment_reference = Column(String, default="")
+    payment_status = Column(String, default="pending")
+    paid_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -121,7 +126,7 @@ class Ticket(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(String, default='valid')
+    status = Column(String, default='paid')
     qr_hash = Column(String, nullable=True)
     timestamp = Column(DateTime, default=func.now())
     scanned_at = Column(DateTime, nullable=True)
@@ -518,13 +523,24 @@ CART_TEMPLATE = """
       flex-direction: column;
       gap: 10px;
     }
-    select {
+    .form-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    input, select {
       background: #0f172a;
       color: white;
       border: 1px solid #475569;
       border-radius: 10px;
       padding: 12px;
       font-size: 16px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-bottom: 6px;
     }
   </style>
 </head>
@@ -584,6 +600,22 @@ CART_TEMPLATE = """
           <div class="summary-row"><span>Sous-total</span><span>${data.subtotal.toLocaleString('fr-FR')} FCFA</span></div>
           <div class="summary-row"><span>Frais de service (1%)</span><span>${data.fee.toLocaleString('fr-FR')} FCFA</span></div>
           <div class="summary-row total"><span>Total</span><span>${data.total.toLocaleString('fr-FR')} FCFA</span></div>
+
+          <div class="form-grid">
+            <div>
+              <label for="payerName">Nom complet</label>
+              <input id="payerName" type="text" placeholder="Ex: Awa Diop" />
+            </div>
+            <div>
+              <label for="payerPhone">Téléphone</label>
+              <input id="payerPhone" type="text" placeholder="Ex: 771234567" />
+            </div>
+            <div>
+              <label for="paymentReference">Référence de paiement (optionnel)</label>
+              <input id="paymentReference" type="text" placeholder="Ex: WAVE-123456" />
+            </div>
+          </div>
+
           <div class="payment-select">
             <label for="paymentProvider">Mode de paiement</label>
             <select id="paymentProvider">
@@ -613,14 +645,28 @@ CART_TEMPLATE = """
 
     async function confirmOrder() {
       const provider = document.getElementById('paymentProvider')?.value || 'wave';
+      const payerName = document.getElementById('payerName')?.value?.trim() || '';
+      const payerPhone = document.getElementById('payerPhone')?.value?.trim() || '';
+      const paymentReference = document.getElementById('paymentReference')?.value?.trim() || '';
+
+      if (!payerName || !payerPhone) {
+        alert('Veuillez renseigner votre nom et votre téléphone.');
+        return;
+      }
+
       const res = await fetch('/api/cart/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_provider: provider })
+        body: JSON.stringify({
+          payment_provider: provider,
+          payer_name: payerName,
+          payer_phone: payerPhone,
+          payment_reference: paymentReference
+        })
       });
       const data = await res.json();
       if (data.ok) {
-        alert('Commande créée avec succès. Paiement à intégrer ensuite (Wave / Orange Money).');
+        alert('Commande validée avec succès. Paiement ' + data.payment_provider + ' enregistré.\nRéférence: ' + data.order_number);
         window.location.href = '/events';
       } else {
         alert(data.error || 'Erreur de commande');
@@ -812,20 +858,50 @@ def cart_checkout():
 
         data = request.get_json() or {}
         payment_provider = data.get('payment_provider', 'wave')
+        payer_name = str(data.get('payer_name', '')).strip()
+        payer_phone = str(data.get('payer_phone', '')).strip()
+        payment_reference = str(data.get('payment_reference', '')).strip()
+
+        if not payer_name or not payer_phone:
+            return jsonify({"error": "Le nom et le téléphone du client sont requis"}), 400
+
         provider_valid = payment_provider in ('wave', 'orange')
         if not provider_valid:
             return jsonify({"error": "Opérateur de paiement invalide"}), 400
 
+        if not payment_reference:
+            payment_reference = f"{payment_provider.upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
         db = SessionLocal()
         order_number = f"ORD-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+        # Utilisateur client par défaut pour la version demo
+        demo_user = db.query(User).filter(User.email == "client@ticketshop.sn").first()
+        if not demo_user:
+            demo_user = User(
+                email="client@ticketshop.sn",
+                username="client",
+                full_name=payer_name,
+                phone=payer_phone,
+                password_hash=pwd_context.hash("client123"),
+                is_admin=False,
+            )
+            db.add(demo_user)
+            db.flush()
+
         order = Order(
             order_number=order_number,
-            user_id=1,
+            user_id=demo_user.id,
             total_amount=round(total, 2),
             fee_amount=round(fee, 2),
-            status='pending',
+            status='paid',
             payment_method='mobile_money',
             payment_provider=payment_provider,
+            payer_name=payer_name,
+            payer_phone=payer_phone,
+            payment_reference=payment_reference,
+            payment_status='paid',
+            paid_at=datetime.now(),
         )
         db.add(order)
         db.flush()
@@ -843,6 +919,18 @@ def cart_checkout():
             if event:
                 event.available_quantity = max(0, event.available_quantity - item['quantity'])
 
+            for i in range(item['quantity']):
+                ticket_number = f"{event.id}-{order.id}-{i+1}"
+                ticket = Ticket(
+                    ticket_number=ticket_number,
+                    event_id=event.id,
+                    order_id=order.id,
+                    buyer_id=demo_user.id,
+                    status='payé',
+                    qr_hash=f"qr-{ticket_number}",
+                )
+                db.add(ticket)
+
         db.commit()
         db.close()
 
@@ -851,9 +939,40 @@ def cart_checkout():
             "ok": True,
             "order_number": order_number,
             "payment_provider": payment_provider,
+            "payer_name": payer_name,
+            "payer_phone": payer_phone,
+            "payment_reference": payment_reference,
             "total": round(total, 2),
-            "fee": round(fee, 2)
+            "fee": round(fee, 2),
+            "status": "paid"
         }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/orders/<order_number>', methods=['GET'])
+def order_details(order_number):
+    try:
+        db = SessionLocal()
+        order = db.query(Order).filter(Order.order_number == order_number).first()
+        if not order:
+            db.close()
+            return jsonify({"error": "Commande introuvable"}), 404
+
+        tickets = db.query(Ticket).filter(Ticket.order_id == order.id).all()
+        payload = {
+            "order_number": order.order_number,
+            "payer_name": order.payer_name,
+            "payer_phone": order.payer_phone,
+            "payment_provider": order.payment_provider,
+            "payment_reference": order.payment_reference,
+            "total_amount": order.total_amount,
+            "fee_amount": order.fee_amount,
+            "payment_status": order.payment_status,
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+            "tickets": [{"ticket_number": t.ticket_number, "status": t.status} for t in tickets],
+        }
+        db.close()
+        return jsonify(payload), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -875,7 +994,7 @@ def validate():
                 errors.append(f"'{n}' invalide")
                 continue
             t = int(n)
-            ticket = db.query(Ticket).filter(Ticket.ticket_number == str(t)).first()
+            ticket = db.query(Ticket).filter_by(ticket_number=str(t)).first()
             if ticket:
                 ticket.status = f"validé - {t}"
             else:
@@ -910,7 +1029,7 @@ def verify():
                     results.append({"ticket": n, "status": "numéro invalide"})
                     continue
                 t = int(n)
-                ticket = db.query(Ticket).filter(Ticket.ticket_number == str(t)).first()
+                ticket = db.query(Ticket).filter_by(ticket_number=str(t)).first()
                 if ticket:
                     results.append({"ticket": t, "status": ticket.status})
                 else:
