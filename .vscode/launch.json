@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ticket System (local)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/ticket_system_unified.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "DATABASE_URL": "sqlite:///ticket_system.db",
+        "SECRET_KEY": "local-vscode-development-key"
+      },
+      "justMyCode": true
+    }
+  ]
+}
