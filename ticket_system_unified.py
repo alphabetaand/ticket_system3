@@ -39,7 +39,7 @@ CORS(app)
 
 # Test connexion simple
 try:
-    if DATABASE_URL.startswith("postgres"):
+    if DATABASE_URL and ("postgres" in DATABASE_URL.lower() or DATABASE_URL.startswith("postgresql")):
         conn = psycopg2.connect(DATABASE_URL)
         print("✅ Connexion PostgreSQL réussie !")
         conn.close()
@@ -274,6 +274,69 @@ def generate_barcode_image(barcode_value, ticket_number):
         return None
 
 
+def get_cart():
+    cart = session.get("cart", {}) or {}
+    if not isinstance(cart, dict):
+        session["cart"] = {}
+        return {}
+
+    normalized = {}
+    for event_id, item in cart.items():
+        try:
+            event_id_int = int(event_id)
+        except (TypeError, ValueError):
+            continue
+
+        if isinstance(item, dict):
+            qty = int(item.get("quantity", 0) or 0)
+        else:
+            qty = int(item or 0)
+
+        if qty > 0:
+            normalized[str(event_id_int)] = {"event_id": event_id_int, "quantity": qty}
+
+    session["cart"] = normalized
+    return normalized
+
+
+def get_cart_items():
+    cart = get_cart()
+    if not cart:
+        return [], 0.0, 0.0, 0.0
+
+    db = SessionLocal()
+    items = []
+    subtotal = 0.0
+
+    try:
+        for event_id, item in cart.items():
+            event = db.query(Event).filter(Event.id == int(event_id)).first()
+            if not event or not event.is_active:
+                continue
+
+            quantity = int(item.get("quantity", 0) or 0)
+            if quantity <= 0:
+                continue
+
+            unit_price = float(event.base_price)
+            total = unit_price * quantity
+            subtotal += total
+
+            items.append({
+                "event_id": event.id,
+                "event_title": event.title,
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "total": total,
+            })
+    finally:
+        db.close()
+
+    fee = round(subtotal * SERVICE_FEE_RATE, 2)
+    total = round(subtotal + fee, 2)
+    return items, round(subtotal, 2), fee, total
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -282,6 +345,33 @@ def health_check():
         "database": DATABASE_URL,
         "app": "ticket_system_unified"
     }), 200
+
+
+@app.route('/api/cart', methods=['GET', 'POST', 'DELETE'])
+def cart_api():
+    if request.method == 'DELETE':
+        session['cart'] = {}
+        return jsonify({"ok": True, "cart": {}}), 200
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        event_id = int(data.get('event_id'))
+        qty = max(1, int(data.get('quantity', 1) or 1))
+
+        db = SessionLocal()
+        event = db.query(Event).filter(Event.id == event_id, Event.is_active == True).first()
+        db.close()
+        if not event:
+            return jsonify({"error": "Événement introuvable"}), 404
+
+        cart = get_cart()
+        cart[str(event_id)] = {"event_id": event_id, "quantity": qty}
+        session['cart'] = cart
+        items, subtotal, fee, total = get_cart_items()
+        return jsonify({"ok": True, "cart": cart, "items": items, "subtotal": subtotal, "fee": fee, "total": total}), 200
+
+    items, subtotal, fee, total = get_cart_items()
+    return jsonify({"items": items, "subtotal": subtotal, "fee": fee, "total": total, "cart": get_cart()}), 200
 
 
 # the rest of the file is same, but event creation and checkout use event.code_type instead of request code_type
