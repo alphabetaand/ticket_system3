@@ -9,3 +9,5 @@ gunicorn
 sqlalchemy
 psycopg2-binary
 werkzeug
+qrcode[pil]
+python-barcode
