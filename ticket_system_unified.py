@@ -29,14 +29,22 @@ from sqlalchemy import and_, or_
 
 # Configuration
 QR_FOLDER = "qrcodes/"
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///ticket_system.db"
 print("✅ Connexion à :", DATABASE_URL)
+
+# Flask app
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
+CORS(app)
 
 # Test connexion simple
 try:
-    conn = psycopg2.connect(DATABASE_URL)
-    print("✅ Connexion PostgreSQL réussie !")
-    conn.close()
+    if DATABASE_URL.startswith("postgres"):
+        conn = psycopg2.connect(DATABASE_URL)
+        print("✅ Connexion PostgreSQL réussie !")
+        conn.close()
+    else:
+        print("✅ Base locale SQLite prête à l'emploi.")
 except Exception as e:
     print("❌ Échec de la connexion :", e)
 
@@ -264,6 +272,16 @@ def generate_barcode_image(barcode_value, ticket_number):
         return "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
     except Exception:
         return None
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "ok": True,
+        "status": "healthy",
+        "database": DATABASE_URL,
+        "app": "ticket_system_unified"
+    }), 200
 
 
 # the rest of the file is same, but event creation and checkout use event.code_type instead of request code_type
@@ -561,7 +579,7 @@ def scan_ticket():
 
         if ticket.status == 'scanned':
             db.close()
-            return jsonify({"ok": False, "error": "Ce billet a déjà été scanné", "scanned_at": ticket.scanned_at.isoformat() if ticket.scanned_at else None, "previous_scan_by": ticket.scanned_by}), 400
+            return jsonify({"ok": False, "error": "Ce billet a déjà été scanné", "scanned_at": ticket.scanned_at.isoformat() if ticket.scanned_at else None, "previous_scan_by": ticket.scanned_by, "scan_location": ticket.scan_location}), 400
 
         if ticket.status == 'used':
             db.close()
